@@ -10,6 +10,7 @@ const votesSchema = require("../Schemas/vote-schema")
 const wwData = require("../Schemas/ww-schema");
 const {PermissionFlagsBits, Colors } = require("discord.js");
 const gameData = require("../Schemas/game-data");
+const brothers = require("../Schemas/brothers-schema")
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -295,36 +296,13 @@ async function GetAlivePlayers(guild, interaction){
 
 async function RESET(guild, interaction){
     //RESET GAMEDATA
-    await gamedata.updateOne({ _id: guild.id }, { $set: { 
-        started: false, 
-        finished: false, 
-        anouncementChannel: "", 
-        voteChannel: "", 
-        modChannel: "", 
-        alive: [], 
-        dead: [], 
-        canVote: false,
-        day: 0
-    } }, { options: { upsert: true } });
+    await gamedata.deleteOne({_id: guild.id})
 
     //RESET CUPID
-    await cupid.updateOne({_id: guild.id}, 
-        {
-            cupid: "",
-            lovers: [],
-            loversDead: false,
-            cupidChannel: "",
-            loversChannel: ""
-        }, {options: {upsert: true}})
+    await cupid.deleteOne({_id: guild.id})
 
     //RESET MAYOR
-    await mayor.updateOne({_id: guild.id},
-        {
-            canVote: false,
-            mayor: "",
-            votes: []
-        },
-        {options: {upsert: true}})
+    await mayor.deleteOne({_id: guild.id})
 
     //RESET ROLE
     await rolesSchema.deleteMany({guildID: guild.id})
@@ -336,15 +314,10 @@ async function RESET(guild, interaction){
     await votesSchema.deleteMany({guildID: guild.id});
 
     //RESET WEREWOLFS
-    await wwData.updateOne({_id: guild.id}, {
-        starttime: "",
-        endtime: "",
-        channel: "",
-        members: [],
-        votes: [],
-        canvote: false
-    },
-    {options: {upsert: true}})
+    await wwData.deleteOne({_id: guild.id})
+
+    //Delete brother
+    await brothers.deleteOne({_id: guild.id})
 
     gen.reply(interaction, "GAME HAS BEEN RESET!")
 }//Done

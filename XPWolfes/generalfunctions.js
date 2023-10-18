@@ -6,18 +6,16 @@ const mongo = require("./mongo");
 const wildboy = require("./Commands/wildboy.js");
 const { Colors, GuildApplicationCommandManager } = require("discord.js");
 
-async function reply(interaction, msg, pvt = true){
+async function reply(interaction, msg, private = true){
     await interaction.reply({
         content: msg,
-        ephemeral: pvt
+        ephemeral: private
     })
-}
-
+}//Reply to command
 async function noReply(interaction){
     interaction.deferReply();
     interaction.deleteReply();
-}
-
+}//Dont reply to command
 async function SendAnouncement(interaction = undefined, title, msg, gamedata = undefined, client = undefined){
     let game
     let pGuild;
@@ -39,35 +37,32 @@ async function SendAnouncement(interaction = undefined, title, msg, gamedata = u
         .setFooter({ text: "Day: " + game.day})
 
     pGuild.channels.cache.get(game.anouncementChannel).send( {embeds: [embed]} )
-}
+}//Send msg specifically in announcement channel
 async function SendToChannel(channelID, msg, client){
     await client.channels.cache.get(channelID).send( msg )
-}
+}//Send msg to specific channel
 function getName(interaction = null, userID, client = null){
     if(interaction) {client = interaction.client}
     const user = client.users.cache.get(userID).tag;
     
     return user.split("#")[0]
-}
-
+}//Get the name of a user
 function removeFromChannelWriting(userID, channel){
     channel.permissionOverwrites.edit(userID, 
         {
             SendMessages: false,
         })
-}
-
+}//Removes user from writing in a channel
 function addToChannel(userID, channel){
     channel.permissionOverwrites.edit(userID, 
     {
         SendMessages: true,
         ViewChannel: true
     })
-}
+}//Adds user to channel
 function votedForPreset(interaction, userID, votedOn){
     return "**" + getName(interaction, userID) + "** voted for **" + getName(interaction, votedOn) + "**"
-}
-
+}//Preset for the voted on msg
 async function addToNightKilled(UserID, GuildID, client, Cause){
     const game = await gameData.findOne({_id: GuildID});
 
@@ -78,8 +73,7 @@ async function addToNightKilled(UserID, GuildID, client, Cause){
 
     await gameData.updateOne({_id: GuildID}, {$push: {nightKilled: {id: UserID, cause: Cause}}}, {options: {upsert: true}});
     SendFeedback(GuildID, "KILLING", getName(null, UserID, client) + "Is going to die in the morning", client)
-}
-
+}//Adds players to a list of people killed at night
 async function Kill(UserID, GuildID, client, guild = null){
     //Kill person
     if(client){
@@ -114,8 +108,7 @@ async function Kill(UserID, GuildID, client, guild = null){
     
     const deadChannel = await guild.channels.cache.get(game.deadChannel)
     addToChannel(UserID, deadChannel)
-}
-
+}//Kills a player
 async function SendFeedback(guildID, title, msg, client, color = Colors.Default){
     const game = await gameData.findOne({_id: guildID});  
 
@@ -126,11 +119,10 @@ async function SendFeedback(guildID, title, msg, client, color = Colors.Default)
         .setFooter({ text: "Day: " + game.day})
 
     await client.channels.cache.get(game.modChannel).send( {embeds: [embed]} )
-}
-
+}//Sends feedback to the feedback channel;
 function getGuild(client, guildID){
     return client.guilds.cache.get(guildID)
-}
+}//Gets the guild from a client
 
 module.exports = {
     addToNightKilled, 

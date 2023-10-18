@@ -26,7 +26,7 @@ module.exports = {
                 .setDescription("Select the player you want to be cupid")
                 .addUserOption(option => 
                     option.setName("cupid")
-                        .setDescription("Player 1 you want to link")
+                        .setDescription("The person to be cupid")
                         .setRequired(true)
                 )
                 .addChannelOption(option => 

@@ -27,17 +27,7 @@ module.exports = {
                         .setDescription("Your mentor")
                         .setRequired(true)
                 )
-        )
-        .addSubcommand(subcommand =>
-            subcommand.setName('kill')
-                .setDescription('test')
-                .addUserOption(option => 
-                    option.setName("mentor")
-                        .setDescription("test")
-                        .setRequired(true)
-                )
-        )
-        
+        ) 
         ,
     async execute(interaction){
         const {member, options, guild, client} = interaction;

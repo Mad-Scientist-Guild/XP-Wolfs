@@ -249,7 +249,7 @@ async function killNightKilled(client, game){
     const updatedGame = await gameData.findOne({_id: game._id})
 
     if(updatedGame.nightKilled.length < 1){
-        await gen.SendAnouncement(null, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died!", game, client);
+        await gen.SendFeedback(game._id, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died!", "No one died", client);
         return;
     }
 
@@ -261,5 +261,5 @@ async function killNightKilled(client, game){
     })
 
     await gameData.updateOne({_id: game._id}, {$set: {nightKilled: []}}, {options: {upsert: true}})
-    await gen.SendAnouncement(null, "NEW DAY, NEW DEATH", msg, game, client);
+    await gen.SendFeedback(game._id, "NEW DAY, NEW DEATH", msg, client);
 }
