@@ -156,9 +156,10 @@ async function handleCreate(options, guild, interaction){
         gen.reply(interaction, "This role has already been created");
     }
     else{
+        let rolename = options.getString('role_name')
         await rolesSchema.create({
             guildID: guild.id,
-            roleName: options.getString('role_name'),
+            roleName: rolename.toLowerCase(),
             channelID: options.getChannel('channel').id,
             roleMembers: [],
             specialFunctions: []

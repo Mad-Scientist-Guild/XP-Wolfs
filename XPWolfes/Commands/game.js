@@ -86,7 +86,7 @@ module.exports = {
                     switch(options.getSubcommand())
                     {
                         case "join":
-                            await handleJoin(guild, interaction);
+                            await handleJoin(guild, interaction, client);
                             return;
                         case "get_alive_players":
                             await GetAlivePlayers(guild, interaction)
@@ -176,7 +176,7 @@ async function handleCreate(options, guild, interaction){
     }
 }//Done
 
-async function handleJoin(guild, interaction)
+async function handleJoin(guild, interaction, client)
 {
     const user = await users.findOne({_id: interaction.user.id, guildID: guild.id})
     const game = await gamedata.findOne({_id: guild.id});
@@ -190,6 +190,7 @@ async function handleJoin(guild, interaction)
                 voted: false
             })
             await gen.reply(interaction, "You have joined the game!")
+            await gen.SendFeedback(guild.id, "PLAYER JOINED!", `${gen.getName(interaction, interaction.user.id)} Joined the game`)
         }
         else if(user.dead){
             await users.updateOne({ _id: user }, { $set: { "dead": false } }, { options: { upsert: true } });
