@@ -3,58 +3,58 @@ const serverSchema = require("../Schemas/server-schema");
 const mongo = require("../mongo");
 const { ActionRowBuilder, SelectMenuBuilder } = require("discord.js");
 
-module.exports = {
-    data : new SlashCommandBuilder()
-        .setName("remove")
-        .setDescription("remove a callout or message")
-        .addSubcommand(subcommand =>
-            subcommand.setName('message')
-                .setDescription('please give the message you want to remove from the list')
+// module.exports = {
+//     data : new SlashCommandBuilder()
+//         .setName("remove")
+//         .setDescription("remove a callout or message")
+//         .addSubcommand(subcommand =>
+//             subcommand.setName('message')
+//                 .setDescription('please give the message you want to remove from the list')
 
-        )
-        .addSubcommand(subcommand =>
-            subcommand.setName('callout')
-                .setDescription('please give the callout you want to remove from the list')
-        )
-        .addSubcommand(subcommand =>
-            subcommand.setName('times')
-                .setDescription('please give the time you want to remove from the list')
-        ),
-    async execute(interaction){
-        const {member, options, guild} = interaction;
+//         )
+//         .addSubcommand(subcommand =>
+//             subcommand.setName('callout')
+//                 .setDescription('please give the callout you want to remove from the list')
+//         )
+//         .addSubcommand(subcommand =>
+//             subcommand.setName('times')
+//                 .setDescription('please give the time you want to remove from the list')
+//         ),
+//     async execute(interaction){
+//         const {member, options, guild} = interaction;
         
-        if(!member.permissions.has('ADMINISTRATOR')){
+//         if(!member.permissions.has('ADMINISTRATOR')){
             
-            interaction.reply("YOU ARE NOT AN ADMINISTRATOR!!!!");
-            return;
-        }
+//             interaction.reply("YOU ARE NOT AN ADMINISTRATOR!!!!");
+//             return;
+//         }
 
-        let schemeData
+//         let schemeData
         
-        await mongo().then(async mongoose => {
-            try{
-                schemeData = await serverSchema.findOne({ _id: guild.id });
-                if(schemeData)
-                {
-                    await handleMessage(options, guild, interaction);
-                    await handleCallouts(options, guild, interaction);
-                    await handleTimes(options, guild, interaction);
-                } 
-                else{
-                    console.log("no data")
-                    await interaction.reply({
-                        content: `There is no data yet for this server. please first use initialize`,
-                        ephemeral: true
-                    })
-                    return
-                }
-            } 
-            finally{
-                mongoose.connection.close();
-            }
-        })
-    }
-}
+//         await mongo().then(async mongoose => {
+//             try{
+//                 schemeData = await serverSchema.findOne({ _id: guild.id });
+//                 if(schemeData)
+//                 {
+//                     await handleMessage(options, guild, interaction);
+//                     await handleCallouts(options, guild, interaction);
+//                     await handleTimes(options, guild, interaction);
+//                 } 
+//                 else{
+//                     console.log("no data")
+//                     await interaction.reply({
+//                         content: `There is no data yet for this server. please first use initialize`,
+//                         ephemeral: true
+//                     })
+//                     return
+//                 }
+//             } 
+//             finally{
+//                 mongoose.connection.close();
+//             }
+//         })
+//     }
+// }
 
 async function handleMessage(options, guild, interaction) {
     if (options.getSubcommand() === 'message') {

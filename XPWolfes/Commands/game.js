@@ -77,7 +77,8 @@ module.exports = {
         ,
     async execute(interaction){
         const {member, options, guild, client} = interaction;
-        const admin = PermissionFlagsBits.Administrator
+        const admin = member.permissions.has(PermissionFlagsBits.Administrator)
+        //const admin = PermissionFlagsBits.Administrator
         
         await mongo().then(async mongoose => {
             try{

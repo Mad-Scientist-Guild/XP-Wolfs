@@ -67,8 +67,8 @@ module.exports = {
     async execute(interaction){
 
         const {member, options, guild} = interaction;
-        
-        if(!member.permissions.has(PermissionFlagsBits.Administrator)){
+        const admin = member.permissions.has(PermissionFlagsBits.Administrator)
+        if(!admin){
             
             interaction.reply("YOU ARE NOT AN ADMINISTRATOR!!!!");
             return;

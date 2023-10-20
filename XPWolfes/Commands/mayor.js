@@ -29,29 +29,37 @@ module.exports = {
         ),
     async execute(interaction){
         const {member, options, guild} = interaction;
-        
-        if(!member.permissions.has('ADMINISTRATOR')){
+        const admin = member.permissions.has(PermissionFlagsBits.Administrator)
+
+        if(!admin){
             gen.reply(interaction, "YOU ARE NOT AN ADMINISTRATOR!!!!")
             return;
         }
         
         await mongo().then(async mongoose => {
             try{
-                switch(options.getSubcommand())
-                {
-                    case "start_vote":
-                        await handleStart(guild, interaction);
-                        return;
-                    case "end_vote":
-                        await handleEnd(guild, interaction);
-                        return;
-                    case "vote":
-                        await handleVote(options, guild, interaction);
-                        return;
-                    default:
-                        console.log("No functionality for this command")
-                        await gen.reply(interaction, `There is no functionality for this command.`)
-                        return;
+
+                if(admin){
+                    switch(options.getSubcommand())
+                    {
+                        case "start_vote":
+                            await handleStart(guild, interaction);
+                            return;
+                        case "end_vote":
+                            await handleEnd(guild, interaction);
+                            return;
+                        default:
+                            console.log("No functionality for this command")
+                            await gen.reply(interaction, `There is no functionality for this command.`)
+                            return;
+                    }
+                }
+                if(admin || !admin){
+                    switch(options.getSubcommand()){
+                        case "vote":
+                            await handleVote(options, guild, interaction);
+                            return;
+                    }
                 }
             } 
             finally{
