@@ -60,7 +60,8 @@ module.exports = {
         await mongo().then(async mongoose => {
             try{
                 const ww = await wwSchema.findOne({_id: guild.id});
-                const isWW = await ww.members.some(({ id }) => id === interaction.user.id);
+                let isWW;
+                if(ww && ww.members) isWW = await ww.members.some(({ id }) => id === interaction.user.id);
                 //Admin commands
                 if(admin){
                     switch(options.getSubcommand())
