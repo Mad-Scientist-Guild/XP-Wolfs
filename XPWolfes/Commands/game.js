@@ -189,8 +189,8 @@ async function handleJoin(guild, interaction, client)
                 dead: false,
                 voted: false
             })
+            await gen.SendFeedback(guild.id, "PLAYER JOINED!", `${gen.getName(interaction, interaction.user.id)} Joined the game`, client)
             await gen.reply(interaction, "You have joined the game!")
-            await gen.SendFeedback(guild.id, "PLAYER JOINED!", `${gen.getName(interaction, interaction.user.id)} Joined the game`)
         }
         else if(user.dead){
             await users.updateOne({ _id: user }, { $set: { "dead": false } }, { options: { upsert: true } });
