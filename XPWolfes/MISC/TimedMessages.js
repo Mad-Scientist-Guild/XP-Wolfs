@@ -9,6 +9,7 @@ const werewolf = require("../Commands/werewolf.js");
 const wwSchema = require("../Schemas/ww-schema");
 const cupidSchema = require("../Schemas/cupid-schema")
 const { userMention, Colors } = require("discord.js");
+const imageSchema = require("../Schemas/image-schema");
 
 module.exports = {
     async execute(client){
@@ -188,7 +189,7 @@ async function wwEndLoop(client, wwData){
         await handleWWEndNight(client, element)
     });
 }
-
+``
 async function handleWWEndNight(client, wwData){
     werewolf.CheckKill(client, wwData);
 }
@@ -211,8 +212,7 @@ async function handleMorning(client, game){
     //Kill everyone that needs to be killed
     await killNightKilled(client, game)
 
-
-
+    await SendNewspaper(client, game)
 }
 
 async function checkLovers(client, game){
@@ -248,8 +248,13 @@ async function checkLovers(client, game){
 async function killNightKilled(client, game){
     const updatedGame = await gameData.findOne({_id: game._id})
 
+    if(!updatedGame.nightKilled){
+        console.log("Game does not exist")
+        return;
+    }
+
     if(updatedGame.nightKilled.length < 1){
-        await gen.SendFeedback(game._id, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died!", "No one died", client);
+        await gen.SendFeedback(game._id, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died! \n No one died", client);
         return;
     }
 
@@ -262,4 +267,18 @@ async function killNightKilled(client, game){
 
     await gameData.updateOne({_id: game._id}, {$set: {nightKilled: []}}, {options: {upsert: true}})
     await gen.SendFeedback(game._id, "NEW DAY, NEW DEATH", msg, client);
+}
+
+async function SendNewspaper(client, game){
+    const schema = await imageSchema.findOne({_id: game._id});
+
+    if(!schema){
+        console.log("No image for newspaper");
+        return;
+    }
+
+    if(schema.imageURL != ""){
+        await gen.SendNewspaper(null, schema.imageURL, game, client);
+        await imageSchema.updateOne({ _id: game._id }, { $set: { "imageURL": "" } }, { options: { upsert: true } });
+    }
 }

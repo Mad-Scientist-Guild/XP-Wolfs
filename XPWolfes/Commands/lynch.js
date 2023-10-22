@@ -115,7 +115,7 @@ async function NewVote(interaction, guild, VotedOn){
     const target = await users.findOne({_id: VotedOn, guildID: guild.id})
     const game = await gameData.findOne({_id: guild.id})
 
-    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunning-wolf"})
+    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunningwolf"})
     const isCunning = cunning.roleMembers.includes(interaction.user.id)
 
     if(!target.dead && target){
@@ -150,7 +150,7 @@ async function handleVote(options, guild, interaction){
     const alivePlayers = await game.alive;
     const isPlaying = await alivePlayers.includes(votedPerson);
     
-    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunning-wolf"})
+    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunningwolf"})
     const isCunning = cunning.roleMembers.includes(interaction.user.id)
 
     if(game && game.canVote)
