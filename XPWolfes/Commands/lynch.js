@@ -116,7 +116,11 @@ async function NewVote(interaction, guild, VotedOn){
     const game = await gameData.findOne({_id: guild.id})
 
     const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunningwolf"})
-    const isCunning = cunning.roleMembers.includes(interaction.user.id)
+
+    let isCunning;
+    if(cunning){
+        isCunning = cunning.roleMembers.includes(interaction.user.id)
+    } 
 
     if(!target.dead && target){
         if(voteData){
@@ -151,45 +155,47 @@ async function handleVote(options, guild, interaction){
     const isPlaying = await alivePlayers.includes(votedPerson);
     
     const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunningwolf"})
-    const isCunning = cunning.roleMembers.includes(interaction.user.id)
-
-    if(game && game.canVote)
-    {
-        if(!isPlaying){
-            gen.reply(interaction, "This person is already dead or not playing")
-            return;
-        }
-        const player = await users.findOne({_id: interaction.user.id, guildID: guild.id})
-        
-        if(!player.dead){
-            //Handle cunning wolf
-            if(isCunning && interaction.channel.id != cunning.channelID){
-                gen.SendToChannel(game.voteChannel, "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, votedPerson) + "**", client)
-                gen.noReply(interaction);
-                return;
-            }
-
-            if(player.voted)
-            {
-                //Change vote unless same vote
-                await changeVote(interaction, guild, player.votedOn, votedPerson)
-            }
-            else
-            {
-                //vote for something new
-                await NewVote(interaction, guild, votedPerson);
-            }
-        }
-        else{
-            gen.reply(interaction, "You are already dead or not participating", true);
-        }
-        
-    }
-    else{
+    let isCunning;
+    if(cunning){
+        isCunning = cunning.roleMembers.includes(interaction.user.id)
+    } 
+    if(!game){
         gen.reply(interaction, "There is no game yet, Please use /game create to make a new game")
+        return;
+    }
+    if(!game.canVote){
+        gen.reply(interaction, "You cannot vote yet.")
+        return;
+    }
+    if(!isPlaying){
+        gen.reply(interaction, "This person is already dead or not playing")
+        return;
+    }
+    const player = await users.findOne({_id: interaction.user.id, guildID: guild.id})
+    if(player.dead){
+        gen.reply(interaction, "You are already dead", true);
+        return;
     }
     
-}
+    //Handle cunning wolf
+    if(isCunning && interaction.channel.id != cunning.channelID){
+        gen.SendToChannel(game.voteChannel, "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, votedPerson) + "**", client)
+        gen.noReply(interaction);
+        return;
+    }
+
+    if(player.voted)
+    {
+        //Change vote unless same vote
+        await changeVote(interaction, guild, player.votedOn, votedPerson)
+    }
+    else
+    {
+        //vote for something new
+        await NewVote(interaction, guild, votedPerson);
+    }
+}  
+
 
 async function changeVote(interaction, guild, oldVote, newVote){
     //Change vote unless same vote

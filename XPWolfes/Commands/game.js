@@ -74,6 +74,15 @@ module.exports = {
                         .setRequired(true)      
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('set_dead_channel')
+                .setDescription('Adds dead channel')
+                .addChannelOption(option => 
+                    option.setName("dead_channel")
+                        .setDescription("A channel where the dead can talk.")
+                        .setRequired(true)      
+                )
+        )
         ,
     async execute(interaction){
         const {member, options, guild, client} = interaction;
@@ -107,6 +116,9 @@ module.exports = {
                             return;
                         case "times":
                             await handleTimes(guild, interaction, client, options)
+                            return;
+                        case "set_dead_channel":
+                            await SetDeadChannel(guild, interaction, client, options)
                             return;
                         case "reset":
                             await RESET(guild, interaction)
@@ -157,7 +169,8 @@ async function handleCreate(options, guild, interaction){
             finished: false,
             anouncementChannel: interaction.options.getChannel("anouncement_channel").id,
             voteChannel: interaction.options.getChannel("vote_channel").id,
-            modChannel: options.getChannel("modderator_channel").id, 
+            modChannel: options.getChannel("modderator_channel").id,
+            deadChannel: options.getChannel("dead_channel"), 
             lynchTimeStart: "",
             lynchTimeEnd: "",
             canVote: false,
@@ -267,7 +280,7 @@ async function handleTimes(guild, interaction, client, options){
     await gameData.updateOne({_id: guild.id}, {$set: {morning: options.getString("morning"), night: options.getString("night")}}, {options: {upsert: true}});
     await gen.reply(interaction, "Set morning and night start times");
     await gen.SendFeedback(guild.id, "TIMES", `Morning: ${options.getString("morning")} \n Night: ${options.getString("night")}`, client)
-}
+}//done
 
 async function GetAlivePlayers(guild, interaction){
     const {client} = interaction;
@@ -295,6 +308,19 @@ async function GetAlivePlayers(guild, interaction){
         gen.reply(interaction, "No game was found")
     }   
 }//Done
+
+async function SetDeadChannel(guild, interaction, client, options){
+    const game = await gamedata.findOne({_id: guild.id});
+
+    if(game){
+        await gamedata.updateOne({_id: guild.id}, {$set: { deadChannel: options.getChannel("dead_channel").id }}, {upsert: true})
+        await gen.SendFeedback(guild.id, "CHANGED DEAD CHANNEL", "Changed the dead channel", client);
+        await gen.noReply(interaction);
+    }
+    else{
+        await gen.reply(interaction, "There is no game");
+    }
+}
 
 async function RESET(guild, interaction){
     //RESET GAMEDATA

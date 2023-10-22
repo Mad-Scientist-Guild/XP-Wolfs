@@ -114,7 +114,8 @@ async function Kill(UserID, GuildID, client, guild = null){
         
         //Handle wildboy
         const wildboyRole = await rolesSchema.findOne({guildID: GuildID, roleName: "wildboy"})
-        if(wildboyRole.specialFunctions[0]){
+
+        if(wildboyRole && wildboyRole.specialFunctions[0]){
             if(wildboyRole.specialFunctions[0].mentor == UserID){
                 await wildboy.mentorDies(GuildID, client)
             }
