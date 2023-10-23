@@ -139,7 +139,7 @@ async function NewVote(interaction, guild, VotedOn){
             gen.reply(interaction, "You actually voted now");
             return;
         }
-        gen.SendToChannel(game.voteChannel, "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, VotedOn) + "**", client)
+        gen.SendToChannel(game.voteChannel, "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, VotedOn) + "** to lynch", client)
         gen.noReply(interaction);
     }
     else{
@@ -179,7 +179,7 @@ async function handleVote(options, guild, interaction){
     
     //Handle cunning wolf
     if(isCunning && interaction.channel.id != cunning.channelID){
-        gen.SendToChannel(game.voteChannel, "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, votedPerson) + "**", client)
+        gen.SendToChannel(game.voteChannel, "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, votedPerson) + "** to lynch", client)
         gen.noReply(interaction);
         return;
     }
