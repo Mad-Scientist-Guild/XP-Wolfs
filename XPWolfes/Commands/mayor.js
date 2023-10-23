@@ -156,7 +156,7 @@ async function handleVote(options, guild, interaction){
             await setPlayerVotedOn(interaction, guild, votedOn);
 
             //replies
-            gen.SendToChannel(game.voteChannel, gen.votedForPreset(interaction, interaction.user.id, votedOn.id), client );
+            gen.SendToChannel(game.voteChannel, "MAYOR VOTE", gen.votedForPreset(interaction, interaction.user.id, votedOn.id), client );
             gen.reply(interaction, "you voted.")
         }
         else{

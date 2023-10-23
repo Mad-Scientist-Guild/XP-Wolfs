@@ -227,7 +227,7 @@ async function wwStartLoop(client, wwData){
 
 async function handleWWStartNight(client, wwData){
     await wwSchema.updateOne({_id: wwData._id}, {$set: {canVote: true, votes: [], "members.$[].votedOn": ""}})
-    gen.SendToChannel(wwData.channel, "You can now vote to eat someone! You have untill **" + wwData.endtime + "** to vote with **/werewolf kill_vote**", client);
+    gen.SendToChannel(wwData.channel, "DINNER TIME!", "You can now vote to eat someone! You have untill **" + wwData.endtime + "** to vote with **/werewolf kill_vote**", client, Colors.Red);
 }
 
 async function wwEndLoop(client, wwData){

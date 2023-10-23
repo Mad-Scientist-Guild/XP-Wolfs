@@ -114,6 +114,6 @@ async function HandleForceAbstain(interaction, guild, client, options){
     )
 
     await gen.SendFeedback(guild.id, "PACIFIST ACTION", `**${gen.getName(interaction, options.getUser("target-one").id)}** and **${gen.getName(interaction, options.getUser("target-two").id)}** are forced to abstain`, client, Colors.Blue)
-    await gen.SendToChannel(role.channelID, `You have chosen to make **${gen.getName(interaction, options.getUser("target-one").id)}** and **${gen.getName(interaction, options.getUser("target-two").id)}** abstain`, client)
+    await gen.SendToChannel(role.channelID, "PEACE BY FORCE", `You have chosen to make **${gen.getName(interaction, options.getUser("target-one").id)}** and **${gen.getName(interaction, options.getUser("target-two").id)}** abstain`, client, Colors.Green)
 }
 

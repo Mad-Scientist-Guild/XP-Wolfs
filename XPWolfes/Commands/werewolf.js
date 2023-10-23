@@ -188,6 +188,10 @@ async function handleVote(options, guild, interaction){
     const player = await ww.members.find(element => element.id == interaction.user.id);
     
     if(ww){
+        if(user.dead){
+            gen.reply(interaction, "You are already dead")
+            return;
+        }
         if(werewolfRole.roleMembers.includes(votedOn.id)){
             gen.reply(interaction, "You cannot vote to kill one of your other werewolfs")
             return;
@@ -212,11 +216,12 @@ async function handleVote(options, guild, interaction){
         //update existing entry
         const exists = await CheckForExistence(ww, votedOn);
 
-        if(player.votedOn != ""){
-            //Remove old vote
-            await wwSchema.updateOne({_id: guild.id, "votes.id": player.votedOn}, {$inc: {"votes.$.votes": -1}}, {options: {upsert: true}});
-        }
         if(player.votedOn != votedOn.id){
+            if(player.votedOn != ""){
+                //Remove old vote
+                await wwSchema.updateOne({_id: guild.id, "votes.id": player.votedOn}, {$inc: {"votes.$.votes": -1}}, {options: {upsert: true}});
+            }
+            
             //add entry
             if(exists){
                 await wwSchema.updateOne({_id: guild.id, "votes.id": votedOn.id}, {$inc: {"votes.$.votes": 1}}, {options: {upsert: true}});
@@ -230,7 +235,7 @@ async function handleVote(options, guild, interaction){
             await wwSchema.updateOne({_id: guild.id, "members.id": interaction.user.id}, {$set: {"members.$.votedOn": votedOn.id}}, {options: {upsert: true}});
 
             //replies
-            gen.SendToChannel(ww.channel, gen.getName(interaction, interaction.user.id) + " voted for " + gen.getName(interaction, votedOn.id), client );
+            gen.SendToChannel(ww.channel, "Werewolf vote", gen.getName(interaction, interaction.user.id) + " voted for " + gen.getName(interaction, votedOn.id), client, Colors.Red);
             gen.reply(interaction, "you voted.")
         }
         else{
@@ -279,7 +284,7 @@ async function CheckKill(client, wwData){
  
     //Check if any votes
     if(wwData.votes.length < 1){
-        gen.SendToChannel(wwData.channel, "You did not vote to eat anyone", client);
+        gen.SendToChannel(wwData.channel, "VOTE CONCLUDED", "You did not vote to eat anyone", client, Colors.Red);
         gen.SendFeedback(wwData._id, "NO KILL", "The werewolfs have not voted to eat anyone", client, Colors.Blue)
         return;
     }
@@ -304,7 +309,7 @@ async function CheckKill(client, wwData){
     //check if enough votes
     console.log(sortedVotes[0])
     if(sortedVotes[0].votes < Math.ceil(aliveWolfs.length / 2)){
-        gen.SendToChannel(wwData.channel, "You did not have enough votes to eat someone", client);
+        gen.SendToChannel(wwData.channel, "VOTE CONCLUDED", "You did not have enough votes to eat someone", client, Colors.Red);
         return;
     }
 
@@ -312,14 +317,14 @@ async function CheckKill(client, wwData){
     if(wwRoleData.specialFunctions[0].turning && !wwRoleData.specialFunctions[0].turned){
         const channel = client.channels.cache.get(wwData.channel);
         gen.addToChannel(sortedVotes[0].id, channel)
-        gen.SendToChannel(wwData.channel, "You have turned **" + gen.getName(null, sortedVotes[0].id, client) + "**", client)
+        gen.SendToChannel(wwData.channel, "VOTE CONCLUDED", "You have turned **" + gen.getName(null, sortedVotes[0].id, client) + "**", client, Colors.Red)
         return;
     }
 
     
 
     //Kill person
-    gen.SendToChannel(wwData.channel, "You decided to eat **" + gen.getName(null, sortedVotes[0].id, client) + "**", client)
+    gen.SendToChannel(wwData.channel, "VOTE CONCLUDED", "You decided to eat **" + gen.getName(null, sortedVotes[0].id, client) + "**", client, Colors.Red)
     gen.SendFeedback(wwData._id, "Werewolf kill", "The werewolfs have decided to eat **" + gen.getName(null, sortedVotes[0].id, client) + "**", client)
     gen.addToNightKilled(sortedVotes[0].id, wwData._id, client, "Werewolfs")
 

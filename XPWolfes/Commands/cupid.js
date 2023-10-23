@@ -151,8 +151,8 @@ async function handleLink(options, guild, interaction){
         gen.addToChannel(lover1, loversChannel);
         gen.addToChannel(lover2, loversChannel);
 
-        gen.SendToChannel(cupidData.cupidChannel, "You have successfully linked " + gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2), client);
-        gen.SendToChannel(cupidData.loversChannel, gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2) + ", You are the lovers!", client);
+        gen.SendToChannel(cupidData.cupidChannel, "LINKED", "You have successfully linked " + gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2), client, Colors.LuminousVividPink);
+        gen.SendToChannel(cupidData.loversChannel, "Butterflies?", gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2) + ", You are the lovers!", client, Colors.LuminousVividPink);
         await gen.SendFeedback(guild.id, "CUPID LINKED", "Cupid linked " + gen.getName(interaction, lover1) +" and " + gen.getName(interaction, lover2) + " as lovers", client, Colors.LuminousVividPink);
         gen.noReply(interaction)    
     }

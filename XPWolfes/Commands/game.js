@@ -181,7 +181,7 @@ async function handleCreate(options, guild, interaction){
             day: 0,
             nightKilled: []
         })
-        await gen.SendToChannel(interaction.options.getChannel("anouncement_channel").id, "A new game has started, You can join by typing **/game join**!!", client)
+        await gen.SendToChannel(interaction.options.getChannel("anouncement_channel").id, "START THE GAME!", "A new game has started, You can join by typing **/game join**!!", client)
         await gen.reply(interaction, "You have created a game!");
 
     } else{

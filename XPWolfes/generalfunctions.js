@@ -42,8 +42,14 @@ async function SendAnouncement(interaction = undefined, title, msg, gamedata = u
     pGuild.channels.cache.get(game.anouncementChannel).send( {embeds: [embed]} )
 }
 //Send msg specifically in announcement channel
-async function SendToChannel(channelID, msg, client){
-    await client.channels.cache.get(channelID).send( msg )
+async function SendToChannel(channelID, title, msg, client, color = Colors.Default){
+
+    const embed = new EmbedBuilder()
+        .setColor(color)
+        .setTitle(title)
+        .setDescription(msg)
+
+    await client.channels.cache.get(channelID).send( {embeds: [embed]} )
 }
 async function SendNewspaper(interaction = undefined, NewspaperLink, gamedata = undefined, client = undefined){
     let game

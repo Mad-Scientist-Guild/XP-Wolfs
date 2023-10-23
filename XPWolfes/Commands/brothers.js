@@ -124,7 +124,7 @@ async function handleSet(options, guild, interaction){
     gen.addToChannel(b3, brothersChannel);
     
     gen.reply(interaction, "brothers set")
-    gen.SendToChannel(channel, gen.getName(interaction, b1) + " " + gen.getName(interaction, b2) + " " + gen.getName(interaction, b3) + ". You 3 are the brothers!", client)
+    gen.SendToChannel(channel, "Hello brothers", gen.getName(interaction, b1) + " " + gen.getName(interaction, b2) + " " + gen.getName(interaction, b3) + ". You 3 are the brothers!", client)
 }
     
 async function handleAdd(options, guild, interaction){
@@ -197,7 +197,7 @@ async function handleAdd(options, guild, interaction){
         
         //Set New vote from player
         await brothersSchema.updateOne({_id: guild.id, "brothers.id": interaction.user.id}, {$set: {"brothers.$.votedOn": newBrotherID}}, {options: {upsert: true}});
-        gen.SendToChannel(channel, gen.votedForPreset(interaction, interaction.user.id, newBrotherID), client );
+        gen.SendToChannel(channel, "Brother vote", gen.votedForPreset(interaction, interaction.user.id, newBrotherID), client );
 
         //Check if 3 votes, then add to channel
         
@@ -210,7 +210,7 @@ async function handleAdd(options, guild, interaction){
         const allVoted = await newBrotherData.newBrotherVote.some(({ votes }) => votes === votesNeeded)
 
         if(allVoted){
-            gen.SendToChannel(channel, "You all voted for " + gen.getName(interaction, allVoted.id)+". They will be added to the chat!", client );
+            gen.SendToChannel(channel, "Vote Concluded", "You all voted for " + gen.getName(interaction, allVoted.id)+". They will be added to the chat!", client );
             const brothersChannel = await guild.channels.cache.get(channel);
             gen.addToChannel(threevotes.id, brothersChannel)
         }
