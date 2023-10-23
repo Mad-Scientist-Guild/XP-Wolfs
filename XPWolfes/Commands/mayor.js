@@ -5,6 +5,8 @@ const mongo = require("../mongo");
 const gameData = require("../Schemas/game-data");
 const mayorData = require("../Schemas/mayor-schema");
 const gen = require("../generalfunctions.js")
+const {PermissionFlagsBits, Colors } = require("discord.js");
+
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -30,11 +32,6 @@ module.exports = {
     async execute(interaction){
         const {member, options, guild} = interaction;
         const admin = member.permissions.has(PermissionFlagsBits.Administrator)
-
-        if(!admin){
-            gen.reply(interaction, "YOU ARE NOT AN ADMINISTRATOR!!!!")
-            return;
-        }
         
         await mongo().then(async mongoose => {
             try{

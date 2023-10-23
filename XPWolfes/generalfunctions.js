@@ -87,7 +87,7 @@ function addToChannel(userID, channel){
 }
 //Adds user to channel
 function votedForPreset(interaction, userID, votedOn){
-    return "**" + getName(interaction, userID) + "** voted for **" + getName(interaction, votedOn) + "**"
+    return "**" + getName(interaction, userID) + "** voted for **" + getName(interaction, votedOn) + "** for mayor"
 }
 //Preset for the voted on msg
 async function addToNightKilled(UserID, GuildID, client, Cause){
