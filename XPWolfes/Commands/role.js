@@ -173,10 +173,12 @@ async function handleRemoveUser(options, guild, interaction){
         const role = await rolesSchema.findOne({guildID: guild.id, roleName: options.getString('role_name')})
 
         if(!role){
-            gen.reply("The role you where trying to remove the user from was not found")
+            gen.reply(interaction, "The role you where trying to remove the user from was not found")
+            return;
         }
         if(!role.roleMembers.includes(options.getUser('user').id)){
-            gen.reply("The user you where trying to remove from the role is not part of the role")
+            gen.reply(interaction, "The user you where trying to remove from the role is not part of the role")
+            return;
         }
 
         await rolesSchema.updateOne({ guildID: guild.id, roleName: options.getString("role_name") }, { $pull: { roleMembers: options.getUser('user').id } }, { options: { upsert: true } });

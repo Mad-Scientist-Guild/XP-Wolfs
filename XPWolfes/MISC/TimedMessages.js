@@ -94,6 +94,9 @@ async function handleVoteEnd(client, game){
     
     await handleAddToAbstained(didntVote, game)
 
+    //Handle Pacifist Ability
+    await HandlePacifistAbility(game)
+
     const votedata = await voteData.find({guildID: game._id})
     //get and sort the data of voting
     const sorted = await votedata.sort((a, b) => {
@@ -157,6 +160,48 @@ async function handleAddToAbstained(didntVote, game){
     await didntVote.forEach(async player => {
         await voteData.updateOne({_id: "Abstained", guildID: game._id}, {$push: {votedBy: player._id}}, {options: {upsert: true}})
     })
+}
+
+async function HandlePacifistAbility(game){
+    //Get pacifist
+    const pacifist = await rolesSchema.findOne({guildID: game._id, roleName: "pacifist"});
+
+    if(!pacifist){
+        console.log("no pacifist, skipping HandlePacifistAbility")
+        return;
+    }
+
+    //Get id's to be switched to abstained
+    const targetOne = await users.findOne({_id: pacifist.specialFunctions[0].targetOne});
+    const targetTwo = await users.findOne({_id: pacifist.specialFunctions[0].targetTwo});
+
+    if(!targetOne || !targetTwo){
+        console.log("no targets for pacifist, skipping HandlePacifistAbility")
+        return;
+    }
+
+    //Check if already in abstained and add if need be
+    const abstained = await voteData.findOne({guildID: game._id, _id: "Abstained"})
+    if(!abstained.votedBy.includes(targetOne._id)){
+        await voteData.updateOne({votedBy: {$in: [targetOne._id]}, guildID: game._id}, {$pull: {votedBy: targetOne._id}})
+        await voteData.updateOne({_id: "Abstained", guildID: game._id}, {$push: {votedBy: targetOne._id}}, {options: {upsert: true}})
+    }
+    if(!abstained.votedBy.includes(targetTwo._id)){
+        await voteData.updateOne({votedBy: {$in: [targetTwo._id]}, guildID: game._id}, {$pull: {votedBy: targetTwo._id}})
+        await voteData.updateOne({_id: "Abstained", guildID: game._id}, {$push: {votedBy: targetTwo._id}}, {options: {upsert: true}})   
+    }
+
+    //Reset pacifist
+    rolesSchema.updateOne(
+        {guildID: guild.id, roleName: "pacifist", "specialFunctions.targetOne": targetOne._id, "specialFunctions.targetTwo": targetTwo._id }, 
+        {$set: 
+            {
+                "specialFunctions.$.targetOne": "",
+                "specialFunctions.$.targetTwo": "",
+            }
+        },
+        {upsert: true}
+    )
 }
 
 async function wwStartLoop(client, wwData){
