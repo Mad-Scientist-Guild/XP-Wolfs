@@ -18,7 +18,8 @@ const Mayor = mongoose.Schema({
     _id : reqString,
     canVote: reqBool,
     mayor: String,
-    votes: []
+    votes: [],
+    successor: String
 })
 
 module.exports = mongoose.model('mayor-schema', Mayor)

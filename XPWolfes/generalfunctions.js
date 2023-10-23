@@ -5,6 +5,7 @@ const rolesSchema = require("./Schemas/roles-schema")
 const mongo = require("./mongo");
 const wildboy = require("./Commands/wildboy.js");
 const { Colors, GuildApplicationCommandManager, AttachmentBuilder } = require("discord.js");
+const mayorSchema = require("./Schemas/mayor-schema");
 
 async function reply(interaction, msg, private = true){
     await interaction.reply({
@@ -98,6 +99,11 @@ async function addToNightKilled(UserID, GuildID, client, Cause){
         return;
     }
 
+    const killedPlayer = users.findOne({_id: UserID})
+    if(killedPlayer.isMayor){
+        SendFeedback(GuildID, "MAYOR KILL", getName(null, UserID, client) + " Is the current mayor. They are dying tonight so the succesor will be the new mayor", client)
+    }
+
     await gameData.updateOne({_id: GuildID}, {$push: {nightKilled: {id: UserID, cause: Cause}}}, {options: {upsert: true}});
     SendFeedback(GuildID, "KILLING", getName(null, UserID, client) + "Is going to die in the morning", client)
 }
@@ -109,7 +115,9 @@ async function Kill(UserID, GuildID, client, guild = null){
         //Handle mayor death
         const KilledPlayer = await users.findOne({_id: UserID, guildID: GuildID})
         if(KilledPlayer.isMayor){
-            await SendFeedback(GuildID, "Mayor dead!", "The mayor died, a new mayor needs to be chosen", client)
+            await SendFeedback(GuildID, "Mayor dead!", "The mayor died, The succesor is taking over", client)
+            let mayordata = await mayorSchema.findOne({_id: GuildID})
+            await mayorSchema.updateOne({_id: GuildID}, {$set: {mayor: mayordata.successor, successor: ""}})
         }
         
         //Handle wildboy

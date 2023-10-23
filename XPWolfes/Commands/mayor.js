@@ -28,9 +28,18 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand.setName('end_vote')
                 .setDescription('use to vote on player')
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('successor')
+                .setDescription("Choose a person to be your successor")
+                .addUserOption(option => 
+                    option.setName("player")
+                        .setDescription("Player you want to be your successor")
+                        .setRequired(true)
+                )
         ),
     async execute(interaction){
-        const {member, options, guild} = interaction;
+        const {member, options, guild, client} = interaction;
         const admin = member.permissions.has(PermissionFlagsBits.Administrator)
         
         await mongo().then(async mongoose => {
@@ -45,16 +54,15 @@ module.exports = {
                         case "end_vote":
                             await handleEnd(guild, interaction);
                             return;
-                        default:
-                            console.log("No functionality for this command")
-                            await gen.reply(interaction, `There is no functionality for this command.`)
-                            return;
                     }
                 }
                 if(admin || !admin){
                     switch(options.getSubcommand()){
                         case "vote":
                             await handleVote(options, guild, interaction);
+                            return;
+                        case "successor":
+                            await ChooseSuccessor(options, guild, interaction, client);
                             return;
                     }
                 }
@@ -178,4 +186,17 @@ async function setPlayerVotedOn(interaction, guild, votedOn){
 
 async function CheckForExistence(mayorVote, votedOn){
     return await mayorVote.votes.some(({ id }) => id === votedOn.id)
+}
+
+async function ChooseSuccessor(options, guild, interaction, client){
+    const mayor = await users.findOne({_id: interaction.user.id})
+
+    if(!mayor.isMayor){
+        gen.reply(interaction, "You are not the mayor and cannot use this command")
+        return;
+    }
+    
+    await mayorData.updateOne({_id: guild.id}, {$set: {successor: options.getUser("player").id}})
+    await gen.SendFeedback(guild.id, "Successor chosen", `The mayor has chosen **${gen.getName(interaction, options.getUser("player").id)}** as their successor`, client)
+    await gen.reply(interaction, `You set **${gen.getName(interaction, options.getUser("player").id)}** as your successor`)
 }

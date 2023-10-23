@@ -316,6 +316,8 @@ async function CheckKill(client, wwData){
         return;
     }
 
+    
+
     //Kill person
     gen.SendToChannel(wwData.channel, "You decided to eat **" + gen.getName(null, sortedVotes[0].id, client) + "**", client)
     gen.SendFeedback(wwData._id, "Werewolf kill", "The werewolfs have decided to eat **" + gen.getName(null, sortedVotes[0].id, client) + "**", client)
