@@ -113,9 +113,7 @@ async function handleVoteEnd(client, game){
     //Check if most people vote for abstained
     if(sorted[0]._id == "Abstained" && sorted[0].votedBy.length >= Math.floor(alivePlayers.length / 2)){
         gen.SendAnouncement(undefined, "Voting has concluded", `Most people voted to Abstain`, game, client)
-        return;
     }
-    
     //if not, check most votes
     else {
         var sameSize = []
