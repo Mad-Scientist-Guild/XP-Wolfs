@@ -168,6 +168,10 @@ async function HandlePacifistAbility(game){
         console.log("no pacifist, skipping HandlePacifistAbility")
         return;
     }
+    if(!pacifist.specialFunctions[0]){
+        console.log("No targets chosen")
+        return;
+    }
 
     //Get id's to be switched to abstained
     const pacifistPlayer = await users.findOne({_id: pacifist.roleMembers[0], guildID: game._id})
