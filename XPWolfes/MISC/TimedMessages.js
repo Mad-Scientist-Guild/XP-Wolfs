@@ -172,8 +172,9 @@ async function HandlePacifistAbility(game){
     }
 
     //Get id's to be switched to abstained
-    const targetOne = await users.findOne({_id: pacifist.specialFunctions[0].targetOne});
-    const targetTwo = await users.findOne({_id: pacifist.specialFunctions[0].targetTwo});
+    const pacifistPlayer = await users.findOne({_id: pacifist.roleMembers[0], guildID: game._id})
+    const targetOne = await users.findOne({_id: pacifist.specialFunctions[0].targetOne, guildID: game._id});
+    const targetTwo = await users.findOne({_id: pacifist.specialFunctions[0].targetTwo, guildID: game._id});
 
     if(!targetOne || !targetTwo){
         console.log("no targets for pacifist, skipping HandlePacifistAbility")
@@ -190,10 +191,14 @@ async function HandlePacifistAbility(game){
         await voteData.updateOne({votedBy: {$in: [targetTwo._id]}, guildID: game._id}, {$pull: {votedBy: targetTwo._id}})
         await voteData.updateOne({_id: "Abstained", guildID: game._id}, {$push: {votedBy: targetTwo._id}}, {options: {upsert: true}})   
     }
+    if(!abstained.votedBy.includes(pacifistPlayer._id)){
+        await voteData.updateOne({votedBy: {$in: [pacifistPlayer._id]}, guildID: game._id}, {$pull: {votedBy: pacifistPlayer._id}})
+        await voteData.updateOne({_id: "Abstained", guildID: game._id}, {$push: {votedBy: pacifistPlayer._id}}, {options: {upsert: true}})
+    }
 
     //Reset pacifist
     rolesSchema.updateOne(
-        {guildID: guild.id, roleName: "pacifist", "specialFunctions.targetOne": targetOne._id, "specialFunctions.targetTwo": targetTwo._id }, 
+        {guildID: game._id, roleName: "pacifist", "specialFunctions.targetOne": targetOne._id, "specialFunctions.targetTwo": targetTwo._id }, 
         {$set: 
             {
                 "specialFunctions.$.targetOne": "",
