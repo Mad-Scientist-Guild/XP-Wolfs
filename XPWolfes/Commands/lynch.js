@@ -233,6 +233,7 @@ async function handleVoteAbstained(guild, interaction){
 
         await voteSchema.updateOne({_id: "Abstained", guildID: guild.id}, {$push: {votedBy: interaction.user.id}}, {options: {upsert: true}})
         await users.updateOne({_id: interaction.user.id, guildID: guild.id}, {$set: {votedOn: "Abstained", voted: true}}, {options: {upsert: true}});
+        await gen.SendToChannel(game.voteChannel, "LYNCH VOTE", "**" + gen.getName(interaction, interaction.user.id) + "** has abstained from voting", client)
         gen.reply(interaction, "**" + gen.getName(interaction, interaction.user.id) + "** Abstained from voting", true)
     }
     else{
