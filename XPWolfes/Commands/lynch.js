@@ -44,7 +44,7 @@ module.exports = {
                 .setDescription('use to vote on player')
         ),
     async execute(interaction){
-        const {member, options, guild} = interaction;
+        const {member, options, guild, client} = interaction;
         const admin = member.permissions.has(PermissionFlagsBits.Administrator)
         await mongo().then(async mongoose => {
             try{
@@ -52,7 +52,7 @@ module.exports = {
                     switch(options.getSubcommand())
                     {
                         case "vote_abstain":
-                            await handleVoteAbstained(guild, interaction);
+                            await handleVoteAbstained(guild, interaction, client);
                             return;
                         case "vote":
                             await handleVote(options, guild, interaction);
@@ -211,7 +211,7 @@ async function changeVote(interaction, guild, oldVote, newVote){
     }
 }
 
-async function handleVoteAbstained(guild, interaction){
+async function handleVoteAbstained(guild, interaction, client){
     const game = await gameData.findOne({_id: guild.id});
     const player = await users.findOne({_id: interaction.user.id, guildID: guild.id})
     const oldVote = await player.votedOn;
