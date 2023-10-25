@@ -113,6 +113,7 @@ async function addToNightKilled(UserID, GuildID, client, Cause){
     await gameData.updateOne({_id: GuildID}, {$push: {nightKilled: {id: UserID, cause: Cause}}}, {options: {upsert: true}});
     SendFeedback(GuildID, "KILLING", getName(null, UserID, client) + "Is going to die in the morning", client)
 }
+
 //Adds players to a list of people killed at night
 async function Kill(UserID, GuildID, client, guild = null){
     //Kill person
@@ -124,6 +125,14 @@ async function Kill(UserID, GuildID, client, guild = null){
             await SendFeedback(GuildID, "Mayor dead!", "The mayor died, The succesor is taking over", client)
             let mayordata = await mayorSchema.findOne({_id: GuildID})
             await mayorSchema.updateOne({_id: GuildID}, {$set: {mayor: mayordata.successor, successor: ""}})
+        }
+
+        const mayor = await mayorSchema.findOne({_id: GuildID})
+        if(mayor){
+            if(mayor.successor == UserID){
+                await SendFeedback(GuildID, "SUCCESSOR DIED!", "The mayors successor died, a new one has to be chosen", client, Colors.Red)
+                await mayorSchema.updateOne({_id: GuildID}, {$set: {successor: ""}}, {upsert: true})
+            }
         }
         
         //Handle wildboy
@@ -152,6 +161,7 @@ async function Kill(UserID, GuildID, client, guild = null){
     const deadChannel = await guild.channels.cache.get(game.deadChannel)
     addToChannel(UserID, deadChannel)
 }
+
 //Kills a player
 async function SendFeedback(guildID, title, msg, client, color = Colors.Default){
     const game = await gameData.findOne({_id: guildID});  
