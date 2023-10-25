@@ -26,6 +26,10 @@ module.exports = {
                         .setRequired(true)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('current_votes')
+                .setDescription('Get current standing of the votes')
+        )
 ,
     async execute(interaction){
 
@@ -38,6 +42,9 @@ module.exports = {
                     {
                         case "force_abstain":
                             await HandleForceAbstain(interaction, guild, client, options)
+                            return;
+                        case "current_votes":
+                            await HandleGetCurrentVotes(interaction, guild, client)
                             return;
                     }
             } 
@@ -115,5 +122,51 @@ async function HandleForceAbstain(interaction, guild, client, options){
 
     await gen.SendFeedback(guild.id, "PACIFIST ACTION", `**${gen.getName(interaction, options.getUser("target-one").id)}** and **${gen.getName(interaction, options.getUser("target-two").id)}** are forced to abstain`, client, Colors.Blue)
     await gen.SendToChannel(role.channelID, "PEACE BY FORCE", `You have chosen to make **${gen.getName(interaction, options.getUser("target-one").id)}** and **${gen.getName(interaction, options.getUser("target-two").id)}** abstain`, client, Colors.Green)
+}
+
+async function HandleGetCurrentVotes(interaction, guild, client){
+
+    const pacifist = await roleData.findOne({guildID: guild.id, roleName: "pacifist"});
+    const votedata = await voteData.find({guildID: guild.id})
+
+    if(!pacifist){
+        gen.reply(interaction, "pacifist role doesn't exist")
+        return;
+    }
+    if(!pacifist.roleMembers.includes(interaction.user.id)){
+        gen.reply(interaction, "You are not the pacifist")
+        return;
+    }
+    if(votedata.length == 0){
+        gen.reply(interaction, "No-one has voted yet");
+        return;
+    }
+
+    let sorted;
+    let response = ""
+
+    //sort the data of voting
+    if(votedata.length > 1){
+        sorted = await votedata.sort((a, b) => {
+            if (a.votedBy.length < b.votedBy.length) {
+            return 1;
+            }
+            if (a.votedBy.length > b.votedBy.length) {
+            return -1;
+            }
+            return 0;
+        }
+        );
+        await sorted.forEach(async item => {
+            response = response + `**${gen.getName(interaction, item._id)}** - ${item.votedBy.length} votes.\n`
+        })
+    }
+    else{
+        response = await `**${gen.getName(interaction, votedata[0]._id)}** - ${votedata[0].votedBy.length} votes.\n`
+    }
+
+
+    await gen.SendToChannel(pacifist.channelID, "Current votes", response, client, Colors.Green)
+    gen.noReply(interaction);
 }
 
