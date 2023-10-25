@@ -256,6 +256,7 @@ async function handleAncient(guild, interaction){
     
     if(wwRole.specialFunctions[0].turned){
         gen.reply(interaction, "You cannot turn more than 1 person");
+        return;
     }
 
     if(wwRole.specialFunctions[0].turning){
@@ -316,6 +317,11 @@ async function CheckKill(client, wwData){
     //Check if turning
     if(wwRoleData.specialFunctions[0].turning && !wwRoleData.specialFunctions[0].turned){
         const channel = client.channels.cache.get(wwData.channel);
+        await rolesSchema.updateOne(
+            {guildID: wwData._id, roleName: "werewolf", "specialFunctions.turning": false, "specialFunctions.turned": false},
+            {$set: {"specialFunctions.$.turned": true}},
+            {upsert: true}
+        )
         gen.addToChannel(sortedVotes[0].id, channel)
         gen.SendToChannel(wwData.channel, "VOTE CONCLUDED", "You have turned **" + gen.getName(null, sortedVotes[0].id, client) + "**", client, Colors.Red)
         return;
