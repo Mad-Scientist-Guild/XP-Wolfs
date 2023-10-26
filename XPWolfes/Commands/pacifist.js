@@ -157,8 +157,13 @@ async function HandleGetCurrentVotes(interaction, guild, client){
             return 0;
         }
         );
+
+        
         await sorted.forEach(async item => {
-            response = response + `**${gen.getName(interaction, item._id)}** - ${item.votedBy.length} votes.\n`
+            if(item._id != "Abstained") response = response + `**${gen.getName(interaction, item._id, client)}** - ${item.votedBy.length} votes.\n`
+            else{
+                response = response + `**${item._id}** - ${item.votedBy.length} votes.\n`
+            }
         })
     }
     else{

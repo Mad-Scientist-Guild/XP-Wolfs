@@ -72,7 +72,7 @@ async function SendNewspaper(interaction = undefined, NewspaperLink, gamedata = 
 }
 //Send msg to specific channel
 function getName(interaction = null, userID, client = null){
-    if(interaction) {client = interaction.client}
+    if(interaction && !client) {client = interaction.client}
     const user = client.users.cache.get(userID).tag;
     
     return user.split("#")[0]
