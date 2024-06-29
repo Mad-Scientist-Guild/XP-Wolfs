@@ -3,6 +3,7 @@ const rolesSchema = require("../Schemas/roles-schema")
 const mongo = require("../mongo");
 const { ChannelFlagsBitField, PermissionFlagsBits } = require("discord.js");
 const gen = require("../generalfunctions");
+const {eventBus} = require("../MISC/EventBus.js")
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -116,7 +117,6 @@ async function handleAddUser(options, guild, interaction){
     gen.reply(interaction, `user ${options.getUser('user').username} has been added to the role ${options.getString("role_name")}`);
 } 
     
-
 async function handleGetAll(guild, interaction){
     const allEntries = await rolesSchema.find({guildID: guild.id})
     allRoleNames = "**Roles:** \n";
@@ -147,8 +147,7 @@ async function handleGet(options, guild, interaction){
         ephemeral: true
     })
 } 
-        
-    
+            
 async function handleCreate(options, guild, interaction){
     const role = await rolesSchema.findOne({guildID: guild.id, roleName: options.getString("role_name")})
 

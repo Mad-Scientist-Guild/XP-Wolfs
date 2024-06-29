@@ -1,4 +1,4 @@
-const {SlashCommandBuilder, roleMention, channelMention} = require("@discordjs/builders");
+const {SlashCommandBuilder, roleMention, channelMention, } = require("@discordjs/builders");
 const rolesSchema = require("../Schemas/roles-schema")
 const users = require("../Schemas/users")
 const gamedata = require("../Schemas/game-data")
@@ -23,26 +23,10 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand.setName('create')
                 .setDescription('Create a new game')
-                .addChannelOption(option => 
-                    option.setName("anouncement_channel")
-                        .setDescription("Channel you want anouncements to be handled in.")
-                        .setRequired(true)
-                )
-                .addChannelOption(option => 
-                    option.setName("vote_channel")
-                        .setDescription("Channel you want votes to be handled in.")
-                        .setRequired(true)      
-                )
-                .addChannelOption(option => 
-                    option.setName("modderator_channel")
-                        .setDescription("A channel where feedback is send.")
-                        .setRequired(true)      
-                )
-                .addChannelOption(option => 
-                    option.setName("dead_channel")
-                        .setDescription("A channel where the dead can talk.")
-                        .setRequired(true)      
-                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('open_game')
+                .setDescription('Opens the game for people to join')
         )
         .addSubcommand(subcommand =>
             subcommand.setName('start_game')
@@ -61,10 +45,20 @@ module.exports = {
                 .setDescription("WARNING: THIS IS A HARD RESET FOR ALL TABLES. ONLY USE AS LAST RESORT")
         )
         .addSubcommand(subcommand =>
-            subcommand.setName('times')
+            subcommand.setName('change_times')
                 .setDescription('stop the game')
                 .addStringOption(option => 
                     option.setName("morning")
+                        .setDescription("Type a time in format HH:MM.")
+                        .setRequired(true)      
+                )
+                .addStringOption(option => 
+                    option.setName("afternoon")
+                        .setDescription("Type a time in format HH:MM.")
+                        .setRequired(true)      
+                )
+                .addStringOption(option => 
+                    option.setName("evening")
                         .setDescription("Type a time in format HH:MM.")
                         .setRequired(true)      
                 )
@@ -108,20 +102,23 @@ module.exports = {
                         case "create":
                             await handleCreate(options, guild, interaction);
                             return;
+                        case "open_game":
+                            await handleOpenGame(guild, interaction)
+                            return;
                         case "start_game":
                             await handleStart(guild, interaction, client);
                             return;
                         case "finish_game":
                             await handleFinish(guild, interaction, client);
                             return;
-                        case "times":
-                            await handleTimes(guild, interaction, client, options)
-                            return;
                         case "set_dead_channel":
                             await SetDeadChannel(guild, interaction, client, options)
                             return;
                         case "reset":
                             await RESET(guild, interaction)
+                            return;
+                        case 'change_times':
+                            await changeTimes(options, guild, interaction)
                             return;
                     }
                 }
@@ -130,62 +127,145 @@ module.exports = {
                 }
             } 
             finally{
-                mongoose.connection.close();
+                //mongoose.connection.close();
             }
         })
     }
 }//Done
+
 
 async function handleCreate(options, guild, interaction){
     const {client} = interaction
 
     const game = await gamedata.findOne({_id: guild.id});
 
-    if(game && game.finished){
-        await gamedata.updateOne({ _id: guild.id }, { $set: { 
-            started: false, 
-            finished: false, 
-            anouncementChannel: options.getChannel("anouncement_channel"), 
-            voteChannel: options.getChannel("vote_channel"), 
-            modChannel: options.getChannel("modderator_channel"),
-            deadChannel: options.getChannel("dead_channel"), 
-            alive: [], 
-            dead: [], 
-            canVote: false,
-            morning: "",
-            night: "",
-            day: 0,
-            nightKilled: []
-        } }, { options: { upsert: true } });
+    if(game && game.started && !game.finished){
+        await gen.reply(interaction, "There is still a game in progress");
+        return;
+    }
 
-        await gen.SendFeedback(guild.id, "GAME CREATED", "A new game has been created", client, Colors.Blue);
-        await gen.SendAnouncement(interaction, "NEW GAME!", "A new game has started, You can join by typing **/game join**!!")
-        await gen.noReply(interaction)
-    } 
-    else if(!game){
-        await gamedata.create({
-            _id: guild.id,
-            started: false,
-            finished: false,
-            anouncementChannel: interaction.options.getChannel("anouncement_channel").id,
-            voteChannel: interaction.options.getChannel("vote_channel").id,
-            modChannel: options.getChannel("modderator_channel").id,
-            deadChannel: options.getChannel("dead_channel"), 
-            lynchTimeStart: "",
-            lynchTimeEnd: "",
-            canVote: false,
-            alive: [],
-            dead: [],
-            morning: "",
-            night: "",
-            day: 0,
-            nightKilled: []
+    await requestChannels(guild, interaction);
+}//Done
+
+async function requestChannels(guild, interaction){
+    let channels = []
+    //Anouncement channel
+    await interaction.reply({content: "Please give the **Anouncement Channel**", fetchReply: true})
+    .then(async () => {
+        await interaction.channel.awaitMessages({max: 1})
+			.then(async collected => {
+                let channelID = await collected.first().content.toString().split("#")[1].split(">")[0]
+                await channels.push(channelID)
+
+                await interaction.followUp({content: "Please give the **Vote Channel**", fetchReply: true}).then(async() =>{
+                    interaction.channel.awaitMessages({max: 1}).then(async collected => {
+                        let channelID = await collected.first().content.toString().split("#")[1].split(">")[0]
+                        await channels.push(channelID)
+
+                        //Modderator Channel
+                        await interaction.followUp({content: "Please give the **Modderator Channel**", fetchReply: true}).then(async () =>{
+                            interaction.channel.awaitMessages({max: 1}).then(async collected => {
+                                let channelID = await collected.first().content.toString().split("#")[1].split(">")[0]
+                                await channels.push(channelID)
+
+                                //Dead channel
+                                await interaction.followUp({content: "Please give the **Dead Channel**", fetchReply: true}).then(async () =>{
+                                    interaction.channel.awaitMessages({max: 1}).then(async collected => {
+                                        let channelID = await collected.first().content.toString().split("#")[1].split(">")[0]
+                                        await channels.push(channelID)
+                                        await requestTimes(interaction, guild, channels)
+                                    })
+                                })
+                            })
+                        })
+                    })
+            })
+        }
+    )})
+}
+
+async function requestTimes(interaction, guild, channels){
+    let times = [];
+    //Morning
+    await interaction.followUp({content: "Please give the morning start time in HH:MM", fetchReply: true}).then(async () =>{
+        interaction.channel.awaitMessages({max: 1}).then(async collected => {
+            await times.push(collected.first().content)
+
+            //Afternoon
+            await interaction.followUp({content: "Please give the afternoon start time in HH:MM", fetchReply: true}).then(async () =>{
+                interaction.channel.awaitMessages({max: 1}).then(async collected => {
+                    await times.push(collected.first().content)
+                    
+                    //Evening
+                    await interaction.followUp({content: "Please give the evening start time in HH:MM", fetchReply: true}).then(async () =>{
+                        interaction.channel.awaitMessages({max: 1}).then(async collected => {
+                            await times.push(collected.first().content)
+                            
+                            //Night
+                            await interaction.followUp({content: "Please give the night start time in HH:MM", fetchReply: true}).then(async () =>{
+                                interaction.channel.awaitMessages({max: 1}).then(async collected => {
+                                    await times.push(collected.first().content)
+                                    await interaction.followUp({content: "Game creation complete"})
+                                    await setupGameVars(guild, times, channels, interaction)
+                                })
+                            })
+                        })
+                    })
+                })
+            })
         })
-        await gen.SendToChannel(interaction.options.getChannel("anouncement_channel").id, "START THE GAME!", "A new game has started, You can join by typing **/game join**!!", client)
-        await gen.reply(interaction, "You have created a game!");
+    })
+}
 
-    } else{
-        await gen.reply(interaction, "A game is already in progress.");
+async function setupGameVars(guild, times, channels, interaction){
+    const {client} = interaction
+    console.log(times)
+    console.log(channels)
+    const game = await gamedata.findOne({_id: guild.id})
+
+    if(game){
+        await gamedata.deleteOne({_id: guild.id})
+        console.log("Game deleted");
+    }
+    await gamedata.create({
+        _id: guild.id,
+        started: false,
+        finished: false,
+        channels: [
+            {
+                anouncementChannel: channels[0],
+                voteChannel: channels[1],
+                modChannel: channels[2],
+                deadChannel: channels[3]
+            }, 
+        ],
+        times: [
+            {
+                morning: times[0],
+                afternoon: times[1],
+                evening: times[2],
+                night: times[3]
+            }
+        ],
+        canVote: false,
+        votes: [],
+        alive: [],
+        dead: [],
+        day: 0,
+        nightKilled: [],
+        newspaper: ""
+    })
+
+    await gen.SendFeedback(guild.id, "NEW GAME!", "You have created a game!, When you are ready for people to join type **/game open**", client);
+}//Done
+
+async function handleOpenGame(guild, interaction){
+    const {client} = interaction
+    const game = await gamedata.findOne({_id: guild.id})
+
+    if(game && !game.started){
+        await gen.SendAnouncement(interaction, "NEW GAME HAS STARTED", "It's time once again. the game is going to start. You can join using the **/game join** command")
+        await gen.noReply()
     }
 }//Done
 
@@ -269,19 +349,6 @@ async function handleFinish(guild, interaction, client){
 
 }//Done
 
-async function handleTimes(guild, interaction, client, options){
-    const game = await gameData.findOne({_id: guild.id});
-
-    if(!game){
-        await gen.reply(interaction, "There is no game to be started, use /game create to make a new game");
-        return;
-    }
-
-    await gameData.updateOne({_id: guild.id}, {$set: {morning: options.getString("morning"), night: options.getString("night")}}, {options: {upsert: true}});
-    await gen.reply(interaction, "Set morning and night start times");
-    await gen.SendFeedback(guild.id, "TIMES", `Morning: ${options.getString("morning")} \n Night: ${options.getString("night")}`, client)
-}//done
-
 async function GetAlivePlayers(guild, interaction){
     const {client} = interaction;
     const game = await gamedata.findOne({_id: guild.id});
@@ -308,19 +375,6 @@ async function GetAlivePlayers(guild, interaction){
         gen.reply(interaction, "No game was found")
     }   
 }//Done
-
-async function SetDeadChannel(guild, interaction, client, options){
-    const game = await gamedata.findOne({_id: guild.id});
-
-    if(game){
-        await gamedata.updateOne({_id: guild.id}, {$set: { deadChannel: options.getChannel("dead_channel").id }}, {upsert: true})
-        await gen.SendFeedback(guild.id, "CHANGED DEAD CHANNEL", "Changed the dead channel", client);
-        await gen.noReply(interaction);
-    }
-    else{
-        await gen.reply(interaction, "There is no game");
-    }
-}
 
 async function RESET(guild, interaction){
     //RESET GAMEDATA
@@ -349,3 +403,19 @@ async function RESET(guild, interaction){
 
     gen.reply(interaction, "GAME HAS BEEN RESET!")
 }//Done
+
+async function changeTimes(options, guild, interaction){
+    const {client} = interaction
+
+    await gameData.updateOne({_id: guild.id}, 
+        {$set: {
+            "times.0.morning": options.getString("morning"),
+            "times.0.afternoon": options.getString("afternoon"),
+            "times.0.evening": options.getString("evening"),
+            "times.0.night": options.getString("night")
+        }
+    }, {upsert: true})
+
+    await gen.SendFeedback(guild.id, "Changed times", "Changed the times of the day", client);
+    gen.noReply(interaction);
+}

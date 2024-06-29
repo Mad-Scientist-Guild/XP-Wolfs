@@ -110,7 +110,7 @@ async function HandleForceAbstain(interaction, guild, client, options){
         {upsert: true}
     )
     await rolesSchema.updateOne(
-        {guildID: guild.id, roleName: "pacifist", "specialFunctions.targetOne": "", "specialFunctions.targetTwo": "" }, 
+        {guildID: guild.id, roleName: "pacifist"}, 
         {$set: 
             {
                 "specialFunctions.$.targetOne": options.getUser("target-one").id,

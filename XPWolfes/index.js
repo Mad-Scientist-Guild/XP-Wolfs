@@ -1,16 +1,16 @@
-const {Client, GatewayIntentBits, Application, ReactionCollector, Message, userMention, Collection, roleMention} = require('discord.js');
+const {Client, GatewayIntentBits, Application, ReactionCollector, Message, userMention, Collection, roleMention, Intents} = require('discord.js');
 const {REST} = require("@discordjs/rest");
 const {Routes} = require("discord-api-types/v9");
 const fs = require("fs");
 const { randomInt } = require('crypto');
 const mongo = require("./mongo");
-const TimedMessage = require("./MISC/TimedMessages")
+const TimedMessage = require("./TimedEvents/TimedMessages")
 const gen = require("./generalfunctions")
 
 
 require('dotenv/config');
 
-    const client = new Client({ intents: 32767 });
+    const client = new Client({ intents: [32767, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
     ///Command handler
     const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
@@ -72,6 +72,21 @@ require('dotenv/config');
             catch(err){
                 if(err) {console.error(err);}
              }
+        })();
+        
+        (async () =>{
+            try{
+                await client.commands.forEach(async command => {
+                    if(typeof command.startup !== "undefined"){
+                        await command.startup()
+                    }
+                });
+            }
+            catch(err){
+                if(err) {
+                    console.error(err);
+                }
+            }
         })();
     })
 

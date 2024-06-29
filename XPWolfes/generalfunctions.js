@@ -39,7 +39,7 @@ async function SendAnouncement(interaction = undefined, title, msg, gamedata = u
         .setDescription(msg)
         .setFooter({ text: "Day: " + game.day})
 
-    pGuild.channels.cache.get(game.anouncementChannel).send( {embeds: [embed]} )
+    pGuild.channels.cache.get(game.channels[0].anouncementChannel).send( {embeds: [embed]} )
 }
 //Send msg specifically in announcement channel
 async function SendToChannel(channelID, title, msg, client, color = Colors.Default){
@@ -67,7 +67,7 @@ async function SendNewspaper(interaction = undefined, NewspaperLink, gamedata = 
 
     const attachment = new AttachmentBuilder(NewspaperLink);
 
-    pGuild.channels.cache.get(game.anouncementChannel).send( {files: [attachment]} )
+    pGuild.channels.cache.get(game.channels[0].anouncementChannel).send( {files: [attachment]} )
     
 }
 //Send msg to specific channel
@@ -85,7 +85,8 @@ function removeFromChannelWriting(userID, channel){
         })
 }
 //Removes user from writing in a channel
-function addToChannel(userID, channel){
+function addToChannel(userID, channel)
+{
     channel.permissionOverwrites.edit(userID, 
     {
         SendMessages: true,
@@ -114,12 +115,34 @@ async function addToNightKilled(UserID, GuildID, client, Cause){
     SendFeedback(GuildID, "KILLING", getName(null, UserID, client) + "Is going to die in the morning", client)
 }
 
+async function killNightKilled(client, game){
+    const updatedGame = await gameData.findOne({_id: game._id})
+
+    if(updatedGame.nightKilled.length < 1){
+        await gen.SendFeedback(game._id, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died!", "No one died", client);
+        return;
+    }
+
+    let msg = "Killed people: \n"
+
+    updatedGame.nightKilled.forEach(async killedPerson => {
+        msg = msg + `${userMention(killedPerson.id)} - killed by ${killedPerson.cause} \n`
+        await gen.Kill(killedPerson.id, game._id, client);
+    })
+
+    await gameData.updateOne({_id: game._id}, {$set: {nightKilled: []}}, {options: {upsert: true}})
+    await gen.SendFeedback(game._id, "NEW DAY, NEW DEATH", msg, client);
+}
+
 //Adds players to a list of people killed at night
 async function Kill(UserID, GuildID, client, guild = null){
     //Kill person
     if(client){
         if(guild == null) guild = getGuild(client, GuildID)
         //Handle mayor death
+
+
+        //Rework this
         const KilledPlayer = await users.findOne({_id: UserID, guildID: GuildID})
         if(KilledPlayer.isMayor){
             await SendFeedback(GuildID, "Mayor dead!", "The mayor died, The succesor is taking over", client)
@@ -158,10 +181,9 @@ async function Kill(UserID, GuildID, client, guild = null){
         removeFromChannelWriting(UserID, channel)
     }
     
-    const deadChannel = await guild.channels.cache.get(game.deadChannel)
+    const deadChannel = await guild.channels.cache.get(game.channels[0].deadChannel)
     addToChannel(UserID, deadChannel)
 }
-
 //Kills a player
 async function SendFeedback(guildID, title, msg, client, color = Colors.Default){
     const game = await gameData.findOne({_id: guildID});  
@@ -171,14 +193,37 @@ async function SendFeedback(guildID, title, msg, client, color = Colors.Default)
         .setTitle(title)
         .setDescription(msg)
         .setFooter({ text: "Day: " + game.day})
-
-    await client.channels.cache.get(game.modChannel).send( {embeds: [embed]} )
+    
+    await client.channels.cache.get(game.channels[0].modChannel).send( {embeds: [embed]} )
 }
 //Sends feedback to the feedback channel;
 function getGuild(client, guildID){
     return client.guilds.cache.get(guildID)
 }
+
+function getChannel(client, channelID){
+    return client.channels.fetch(channelID);
+}
 //Gets the guild from a client
+
+async function LeftHouse(userID, guildID){
+    await gameData.updateOne({_id: guildID}, {$push: {leftHouse: userID}}, {upsert: true});
+}
+
+async function CheckLeftHouse(userID, guildID){
+    let left = await gameData.findOne({_id: guildID}, {$elemMatch: {leftHouse: userID}}, {upsert: true})
+
+    if(left){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+async function ClearLeftHouse(){
+    await gameData.updateOne({_id: guildID}, {$set: {leftHouse: []}}, {upsert: true});
+}
 
 module.exports = {
     addToNightKilled, 
@@ -193,5 +238,8 @@ module.exports = {
     noReply, 
     removeFromChannelWriting, 
     getGuild,
-    SendNewspaper
+    getChannel,
+    SendNewspaper,
+    LeftHouse,
+    CheckLeftHouse
 }

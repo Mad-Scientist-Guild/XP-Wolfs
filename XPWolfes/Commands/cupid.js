@@ -2,7 +2,9 @@ const {SlashCommandBuilder, roleMention, EmbedBuilder, channelMention } = requir
 const mongo = require("../mongo");
 const { MessageEmbed, AttachmentBuilder, PermissionFlagsBits, Colors } = require('discord.js');
 const cupidSchema = require("../Schemas/cupid-schema");
-const gen = require("../generalfunctions.js")
+const gen = require("../generalfunctions.js");
+const rolesSchema = require("../Schemas/roles-schema");
+const getters = require("../GeneralApi/Getter.js");
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -24,16 +26,6 @@ module.exports = {
         .addSubcommand(subcommand => 
             subcommand.setName("set")
                 .setDescription("Select the player you want to be cupid")
-                .addUserOption(option => 
-                    option.setName("cupid")
-                        .setDescription("The person to be cupid")
-                        .setRequired(true)
-                )
-                .addChannelOption(option => 
-                    option.setName("cupid-chat")
-                        .setDescription("Cupid's channel")
-                        .setRequired(true)
-                )
                 .addChannelOption(option => 
                     option.setName("lovers-chat")
                         .setDescription("Lovers channel")
@@ -72,87 +64,88 @@ module.exports = {
                 }
             }
             finally{
-                mongoose.connection.close();
+                //mongoose.connection.close();
             }
         })
     }
 }
 
 async function handleSet(options, guild, interaction){
-     const cupidData = await cupidSchema.findOne({_id: guild.id});
-     const cupidID = options.getUser("cupid").id
-     const cupidChatID = options.getChannel("cupid-chat").id
-     const loversChatID = options.getChannel("lovers-chat").id
+    const cupidData = await rolesSchema.findOne({guildID: guild.id, roleName: "cupid"});
+    const loversChatID = options.getChannel("lovers-chat").id
      
-     if(cupidData){
-        //update data that already exists
-        await cupidSchema.updateOne({_id: guild.id}, 
-            {$set: 
-                {
-                    cupid: cupidID,
-                    lovers: [],
-                    loversDead: false,
-                    cupidChannel: cupidChatID,
-                    loversChannel: loversChatID
-                }
-            },
-            {options: {upsert: true}}
-        )
-
-    }
-    else{
-        //Make new entry
-        await cupidSchema.create({
-            _id: guild.id,
-            cupid: cupidID,
-            lovers: [],
-            loversDead: false,
-            cupidChannel: cupidChatID,
-            loversChannel: loversChatID
-        })
+    //Remove old entry
+    if(!cupidData){
+        await gen.reply(interaction, "This role does not exist yet.\n Please first create the role with the command **/role create**", true)
+        return
     }
 
-    const cupidChannel = await guild.channels.cache.get(cupidChatID);
-    cupidChannel.permissionOverwrites.edit(cupidID, 
-    {
-            SendMessages: true,
-            ViewChannel: true
-    })
+    await rolesSchema.updateOne(
+        {guildID: guild.id, 
+            roleName: "cupid"},
+        {$set: {
+            specialFunctions:{
+                lovers: [],
+                loversChannel: loversChatID,
+                loversDead: false
+            }}}, 
+        {options: {upsert: true}});
+        gen.reply(interaction, "cupid set (updated)")
     
-    gen.reply(interaction, "cupid set")
 }
-    
+  
+//TODO:
+//Check if lovers are in game
+//Check if game has started;
 async function handleLink(options, guild, interaction){
     const {client} = interaction
 
-    const cupidData = await cupidSchema.findOne({_id: guild.id});
+    const game = await getters.GetGame(guild.id)
+
+    if(await getters.GameInProgress(guild.id)){
+        gen.reply(interaction, "The game hasn't started yet")
+        return;
+    }
+
+    const cupidData = await getters.GetRole(guild.id, "cupid");
     const lover1 = options.getUser("lover1").id
     const lover2 = options.getUser("lover2").id
-    
+
     if(cupidData){
-        const cupid = cupidData.cupid;
-        const loversChat = cupidData.loversChannel;
+        const cupid = cupidData.roleMembers[0];
+        const loversInfo = cupidData.specialFunctions[0];
+        const loversChat = loversInfo.loversChannel;
+
+        if(!await getters.GetUser(lover1, guild.id)){
+            gen.reply(interaction, "The first lover is not in the game");
+            return;
+        }
+        if(!await getters.GetUser(lover2, guild.id)){
+            gen.reply(interaction, "The second lover is not in the game");
+            return;
+        }
 
         //Check if not self
         if(cupid == lover1 || cupid == lover2){
             gen.reply(interaction, "You cannot choose yourself to link with someone");
             return;
         }
+
         //Check if already set
-        if(cupidData.lovers.length > 0){
+        if(loversInfo.lovers.length > 0){
             gen.reply(interaction, "You have already chosen two lovers");
             return;
         }
 
-        await cupidSchema.updateOne({_id: guild.id}, {$set: {lovers: [lover1, lover2]}}, {options: {upsert: true}});
+        await rolesSchema.updateOne({guildID: guild.id, specialFunctions: {$elemMatch: {lovers: []}}}, {$push: {"specialFunctions.$.lovers": {$each: [lover1, lover2]}}}, {options: {upsert: true}});
 
         //Add lovers to lovers chat
         const loversChannel = await guild.channels.cache.get(loversChat);
         gen.addToChannel(lover1, loversChannel);
         gen.addToChannel(lover2, loversChannel);
 
-        gen.SendToChannel(cupidData.cupidChannel, "LINKED", "You have successfully linked " + gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2), client, Colors.LuminousVividPink);
-        gen.SendToChannel(cupidData.loversChannel, "Butterflies?", gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2) + ", You are the lovers!", client, Colors.LuminousVividPink);
+        gen.SendToChannel(cupidData.channelID, "LINKED", "You have successfully linked " + gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2), client, Colors.LuminousVividPink);
+        gen.SendToChannel(loversInfo.loversChannel, "Butterflies?", gen.getName(interaction, lover1) + " and " + gen.getName(interaction, lover2) + ", You are the lovers!", client, Colors.LuminousVividPink);
         await gen.SendFeedback(guild.id, "CUPID LINKED", "Cupid linked " + gen.getName(interaction, lover1) +" and " + gen.getName(interaction, lover2) + " as lovers", client, Colors.LuminousVividPink);
         gen.noReply(interaction)    
     }
