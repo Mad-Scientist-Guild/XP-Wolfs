@@ -1,11 +1,15 @@
-const {SlashCommandBuilder, roleMention, channelMention, EmbedBuilder} = require("@discordjs/builders");
+const {SlashCommandBuilder, roleMention, channelMention, EmbedBuilder, userMention} = require("@discordjs/builders");
 const gameData = require("./Schemas/game-data")
 const users = require("./Schemas/users")
 const rolesSchema = require("./Schemas/roles-schema")
+const factionSchema = require("./Schemas/faction-Schema.js");
+
 const mongo = require("./mongo");
-const wildboy = require("./Commands/wildboy.js");
+const wildboy = require("./Roles/wildboy.js");
 const { Colors, GuildApplicationCommandManager, AttachmentBuilder } = require("discord.js");
 const mayorSchema = require("./Schemas/mayor-schema");
+const { eventBus } = require("./MISC/EventBus.js");
+const getters = require("./GeneralApi/Getter.js");
 
 async function reply(interaction, msg, private = true){
     await interaction.reply({
@@ -13,11 +17,13 @@ async function reply(interaction, msg, private = true){
         ephemeral: private
     })
 }
+
 //Reply to command
 async function noReply(interaction){
     interaction.deferReply();
     interaction.deleteReply();
 }
+
 //Dont reply to command
 async function SendAnouncement(interaction = undefined, title, msg, gamedata = undefined, client = undefined){
     let game
@@ -41,6 +47,7 @@ async function SendAnouncement(interaction = undefined, title, msg, gamedata = u
 
     pGuild.channels.cache.get(game.channels[0].anouncementChannel).send( {embeds: [embed]} )
 }
+
 //Send msg specifically in announcement channel
 async function SendToChannel(channelID, title, msg, client, color = Colors.Default){
 
@@ -51,6 +58,7 @@ async function SendToChannel(channelID, title, msg, client, color = Colors.Defau
 
     await client.channels.cache.get(channelID).send( {embeds: [embed]} )
 }
+
 async function SendNewspaper(interaction = undefined, NewspaperLink, gamedata = undefined, client = undefined){
     let game
     let pGuild;
@@ -70,6 +78,7 @@ async function SendNewspaper(interaction = undefined, NewspaperLink, gamedata = 
     pGuild.channels.cache.get(game.channels[0].anouncementChannel).send( {files: [attachment]} )
     
 }
+
 //Send msg to specific channel
 function getName(interaction = null, userID, client = null){
     if(interaction && !client) {client = interaction.client}
@@ -77,6 +86,7 @@ function getName(interaction = null, userID, client = null){
     
     return user.split("#")[0]
 }
+
 //Get the name of a user
 function removeFromChannelWriting(userID, channel){
     channel.permissionOverwrites.edit(userID, 
@@ -84,6 +94,7 @@ function removeFromChannelWriting(userID, channel){
             SendMessages: false,
         })
 }
+
 //Removes user from writing in a channel
 function addToChannel(userID, channel)
 {
@@ -93,10 +104,12 @@ function addToChannel(userID, channel)
         ViewChannel: true
     })
 }
+
 //Adds user to channel
 function votedForPreset(interaction, userID, votedOn){
     return "**" + getName(interaction, userID) + "** voted for **" + getName(interaction, votedOn) + "** for mayor"
 }
+
 //Preset for the voted on msg
 async function addToNightKilled(UserID, GuildID, client, Cause){
     const game = await gameData.findOne({_id: GuildID});
@@ -112,14 +125,18 @@ async function addToNightKilled(UserID, GuildID, client, Cause){
     }
 
     await gameData.updateOne({_id: GuildID}, {$push: {nightKilled: {id: UserID, cause: Cause}}}, {options: {upsert: true}});
+    
     SendFeedback(GuildID, "KILLING", getName(null, UserID, client) + "Is going to die in the morning", client)
 }
 
 async function killNightKilled(client, game){
+
+    await gameData.updateOne({_id: game._id}, {$set: {killedLastNight: []}}, {options: {upsert: true}});
+
     const updatedGame = await gameData.findOne({_id: game._id})
 
     if(updatedGame.nightKilled.length < 1){
-        await gen.SendFeedback(game._id, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died!", "No one died", client);
+        await SendFeedback(game._id, "NEW DAY, NO DEATH?", "It was awfully quiet tonight, nobody died!", client);
         return;
     }
 
@@ -127,29 +144,59 @@ async function killNightKilled(client, game){
 
     updatedGame.nightKilled.forEach(async killedPerson => {
         msg = msg + `${userMention(killedPerson.id)} - killed by ${killedPerson.cause} \n`
-        await gen.Kill(killedPerson.id, game._id, client);
+        await Kill(killedPerson.id, game._id, client);
     })
 
+
+    const silverAngel = await rolesSchema.findOne({guildID: game._id, roleName: "silver-angel"})
+    if(silverAngel.specialFunctions.length > 0 && silverAngel.specialFunctions[0].protecting != "")
+    {
+        await rolesSchema.updateOne(
+        {guildID: game._id, roleName: "silver-angel"}, 
+        {set: {"specialFunctions.0.protecting": "", "specialFunctions.0.protectedLast": silverAngel.specialFunctions[0].protecting}}, 
+        {options: {upsert: true}});
+
+        await SendFeedback(game._id, "Protected", userMention(UserID) + " was protected and didnt die", client, Colors.White);
+        return;
+    }
+
     await gameData.updateOne({_id: game._id}, {$set: {nightKilled: []}}, {options: {upsert: true}})
-    await gen.SendFeedback(game._id, "NEW DAY, NEW DEATH", msg, client);
+    await SendFeedback(game._id, "NEW DAY, NEW DEATH", msg, client);
 }
 
-//Adds players to a list of people killed at night
+//Kill player right then and there
 async function Kill(UserID, GuildID, client, guild = null){
     //Kill person
     if(client){
         if(guild == null) guild = getGuild(client, GuildID)
-        //Handle mayor death
+            
+        const game = await getters.GetGame(GuildID);
 
+        //Silver angel check;
+        const silverAngel = await rolesSchema.findOne({guildID: GuildID, roleName: "silver-angel"})
+        if(silverAngel.specialFunctions.length > 0 && UserID == silverAngel.specialFunctions[0].protecting)
+        {
+            await rolesSchema.updateOne(
+            {guildID: GuildID, roleName: "silver-angel"}, 
+            {$set: {"specialFunctions.0.protecting": "", "specialFunctions.0.protectedLast": silverAngel.specialFunctions[0].protecting}}, 
+            {options: {upsert: true}});
+
+            await SendFeedback(GuildID, "Protected", userMention(UserID) + " was protected and didn't die", client, Colors.White);
+            return;
+        }
 
         //Rework this
         const KilledPlayer = await users.findOne({_id: UserID, guildID: GuildID})
+
+        await gameData.updateOne({_id: GuildID}, {$push: {killedLastNight: KilledPlayer._id}}, {options: {upsert: true}});
+
         if(KilledPlayer.isMayor){
             await SendFeedback(GuildID, "Mayor dead!", "The mayor died, The succesor is taking over", client)
             let mayordata = await mayorSchema.findOne({_id: GuildID})
             await mayorSchema.updateOne({_id: GuildID}, {$set: {mayor: mayordata.successor, successor: ""}})
         }
-
+        
+        //Handle mayor's succesor death
         const mayor = await mayorSchema.findOne({_id: GuildID})
         if(mayor){
             if(mayor.successor == UserID){
@@ -157,7 +204,7 @@ async function Kill(UserID, GuildID, client, guild = null){
                 await mayorSchema.updateOne({_id: GuildID}, {$set: {successor: ""}}, {upsert: true})
             }
         }
-        
+    
         //Handle wildboy
         const wildboyRole = await rolesSchema.findOne({guildID: GuildID, roleName: "wildboy"})
 
@@ -166,6 +213,9 @@ async function Kill(UserID, GuildID, client, guild = null){
                 await wildboy.mentorDies(GuildID, client)
             }
         }
+
+        await eventBus.deploy('checkLover', [UserID, game, client]);
+        await eventBus.deploy('checkVampire', [UserID, game, client]);
     }
     
     await users.updateOne({_id: UserID, guildID: GuildID}, {$set: {dead: true, isMayor: false, votedOn: "", votedOnMayor: ""}}, {options: {upsert: true}});
@@ -184,6 +234,31 @@ async function Kill(UserID, GuildID, client, guild = null){
     const deadChannel = await guild.channels.cache.get(game.channels[0].deadChannel)
     addToChannel(UserID, deadChannel)
 }
+
+async function Revive(UserID, guild, client){
+
+    const channels = await guild.channels.cache
+    for (const channel of channels.values()) 
+    {
+        channel.permissionOverwrites.edit(UserID, 
+            {
+                SendMessages: true,
+            })
+        }
+        
+    const game = await gameData.findOne({_id: guild.id})
+    await users.updateOne({_id: UserID, guildID: guild.id}, {$set: {dead: false}}, {options: {upsert: true}});
+    await gameData.updateOne({_id: guild.id}, {$push: {alive: UserID}}, {options: {upsert: true}})
+    const deadChannel = await guild.channels.cache.get(game.channels[0].deadChannel)
+    deadChannel.permissionOverwrites.edit(UserID, 
+        {
+            SendMessages: false,
+            ViewChannel: false
+        })
+
+    await SendFeedback(guild.id, "REVIVED", getName(null, UserID, client) + " was revived by a GM", client, Colors.Green)
+}
+
 //Kills a player
 async function SendFeedback(guildID, title, msg, client, color = Colors.Default){
     const game = await gameData.findOne({_id: guildID});  
@@ -225,6 +300,17 @@ async function ClearLeftHouse(){
     await gameData.updateOne({_id: guildID}, {$set: {leftHouse: []}}, {upsert: true});
 }
 
+async function GetPlayersFaction(userID, GuildID){
+    const faction = await factionSchema.findOne({guildID: GuildID, factionMembers: {$in: [userID]}});
+
+    if(faction){
+        return faction.factionName
+    }
+    else{
+        return undefined;
+    }
+}
+
 module.exports = {
     addToNightKilled, 
     SendAnouncement, 
@@ -234,6 +320,7 @@ module.exports = {
     addToChannel, 
     votedForPreset, 
     Kill, 
+    Revive,
     SendFeedback, 
     noReply, 
     removeFromChannelWriting, 
@@ -241,5 +328,7 @@ module.exports = {
     getChannel,
     SendNewspaper,
     LeftHouse,
-    CheckLeftHouse
+    CheckLeftHouse,
+    killNightKilled,
+    GetPlayersFaction
 }

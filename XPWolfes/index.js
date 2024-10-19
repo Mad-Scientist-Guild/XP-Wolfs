@@ -12,13 +12,18 @@ require('dotenv/config');
 
     const client = new Client({ intents: [32767, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
+    
+
     ///Command handler
     const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
-    const menu_interactions = fs.readdirSync("./DropdownInteraction").filter(file => file.endsWith(".js"));
+    const roleCommandFiles = fs.readdirSync("./roles").filter(file => file.endsWith(".js"));
     const commands = [];
     client.commands = new Collection();
     client.menu_ints = new Collection();
     
+
+
+
     //Settings
     channel = undefined;
     role = undefined;
@@ -31,9 +36,10 @@ require('dotenv/config');
         client.commands.set(command.data.name, command);
     }
 
-    for(const file of menu_interactions){
-        const menu_int = require(`./DropdownInteraction/${file}`);
-        client.menu_ints.set(menu_int.data.customId, menu_int);
+    for(const file of roleCommandFiles){
+        const command = require(`./roles/${file}`);
+        commands.push(command.data.toJSON());
+        client.commands.set(command.data.name, command);
     }
 
     client.on('ready', async () => {

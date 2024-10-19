@@ -37,6 +37,7 @@ const game = mongoose.Schema({
     dead: [],
     day: Number,
     nightKilled: [],
+    killedLastNight: [],
     newspaper: string,
     leftHouse: []
 })

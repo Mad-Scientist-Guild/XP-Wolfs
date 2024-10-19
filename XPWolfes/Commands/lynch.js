@@ -54,7 +54,7 @@ module.exports = {
     async startup(){
         eventBus.subscribe('afternoon', handleVoteStart)
         eventBus.subscribe('evening', handleVoteEnd)
-    }
+    },
 }
 
 //Commands
@@ -64,13 +64,6 @@ async function NewVote(interaction, guild, VotedOn){
     const voteData = await voteSchema.findOne({_id: VotedOn, guildID: guild.id})
     const target = await users.findOne({_id: VotedOn, guildID: guild.id})
     const game = await gameData.findOne({_id: guild.id})
-
-    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunningwolf"})
-
-    let isCunning;
-    if(cunning){
-        isCunning = cunning.roleMembers.includes(interaction.user.id)
-    } 
 
     if(!target.dead && target){
         if(voteData){
@@ -85,10 +78,7 @@ async function NewVote(interaction, guild, VotedOn){
             })
         }
         await users.updateOne({_id: interaction.user.id, guildID: guild.id}, {$set: {votedOn: VotedOn, voted: true}}, {options: {upsert: true}});
-        if(isCunning){
-            gen.reply(interaction, "You actually voted now");
-            return;
-        }
+
         gen.SendToChannel(game.voteChannel, "LYNCH VOTE", "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, VotedOn) + "** to lynch", client)
         gen.noReply(interaction);
     }
@@ -103,23 +93,28 @@ async function handleVote(options, guild, interaction){
     const alivePlayers = await game.alive;
     const isPlaying = await alivePlayers.includes(votedPerson);
     
-    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "cunningwolf"})
-    let isCunning;
-    if(cunning){
-        isCunning = cunning.roleMembers.includes(interaction.user.id)
-    } 
     if(!game){
         gen.reply(interaction, "There is no game yet, Please use /game create to make a new game")
         return;
     }
+
+    //Check if cunning wolf
+    const cunning = await rolesSchema.findOne({guildID: guild.id, roleName: "werewolf", "specialFunctions.0.cunningWolf": interaction.user.id})
+    let isCunning = false;
+    if(cunning){
+        isCunning = true;
+    } 
+
     if(!game.canVote){
         gen.reply(interaction, "You cannot vote yet.")
         return;
     }
+
     if(!isPlaying){
         gen.reply(interaction, "This person is already dead or not playing")
         return;
     }
+
     const player = await users.findOne({_id: interaction.user.id, guildID: guild.id})
     if(player.dead){
         gen.reply(interaction, "You are already dead", true);
@@ -127,7 +122,7 @@ async function handleVote(options, guild, interaction){
     }
     
     //Handle cunning wolf
-    if(isCunning && interaction.channel.id != cunning.channelID){
+    if(isCunning){
         gen.SendToChannel(game.voteChannel, "LYNCH VOTE", "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, votedPerson) + "** to lynch", client)
         gen.noReply(interaction);
         return;
@@ -199,13 +194,26 @@ async function handleVoteStart([client, game]){
 async function handleVoteEnd([client, game]){
     //Make voting no longer possible
     await gameData.updateOne({_id: game._id}, {$set: {canVote: false}}, {options: {upsert: true}});
+    
+    //Handle Pacifist
+    const pacifist = await rolesSchema.findOne({guildID: game._id, roleName: "pacifist"});
+    if(pacifist && pacifist.specialFunctions.length != 0 && pacifist.specialFunctions[0].usingAbility){
+
+        await gen.SendAnouncement(undefined, "Lynch Canceled!", "The pacifist has decided that nobody will be lynched today!!", game, client);
+
+        await voteSchema.deleteMany({guildID: game._id})
+        await users.updateMany({guildID: game._id, voted: true}, {$set: {votedOn: "", voted: false}}, {options: {upsert: true}})
+        
+        return;
+    }
+
 
     //check who didnt vote and add to abstained
     const didntVote = await users.find({guildID: game._id, voted: false, dead: false});
     const absExists = await voteSchema.findOne({guildID: game._id, _id: "Abstained"})
-
+    
     if(!absExists){
-        await voteData.create({
+        await voteSchema.create({
             _id: "Abstained",
             guildID: game._id,
             votedBy: []
@@ -231,9 +239,7 @@ async function handleVoteEnd([client, game]){
     //Check if most people vote for abstained
     if(sorted[0]._id == "Abstained" && sorted[0].votedBy.length >= Math.floor(alivePlayers.length / 2)){
         gen.SendAnouncement(undefined, "Voting has concluded", `Most people voted to Abstain`, game, client)
-        return;
     }
-    
     //if not, check most votes
     else {
         var sameSize = []
@@ -268,6 +274,26 @@ async function handleVoteEnd([client, game]){
             else{ gen.SendAnouncement(undefined, "Voting has concluded", `There is a **TIE**. No-one gets lynched`, game, client) }
         }
     }
+
+    //Reveal votes
+    const ww = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
+    let revealString = "";
+    
+    await alivePlayers.forEach(async player =>{
+        //Check for cunning wolf
+        if(ww.specialFunctions.length != 0 && ww.specialFunctions[0].cunningWolf == player._id){
+            revealString += userMention(player._id) + " voted for " + userMention(cunningWolf.ww.specialFunctions[0].cunningWolfVote) + "\n"
+        }
+        else if(player.votedOn == "" || player.votedOn == undefined){
+            revealString += userMention(player._id) + " voted to abstain. \n"
+        }
+        else{
+            revealString += userMention(player._id) + " voted for " + userMention(player.votedOn) + "\n"
+        }
+    })
+
+    await gen.SendAnouncement(undefined, "Votes!", revealString, game, client);
+
 
     //Reset vote data
     await voteSchema.deleteMany({guildID: game._id})

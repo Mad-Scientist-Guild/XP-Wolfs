@@ -1,7 +1,7 @@
-const mongo = require("../mongo");
-const gameData = require("../Schemas/game-data")
-const rolesData = require("../Schemas/roles-schema");
-const usersData = require("../Schemas/users")
+const mongo = require("../mongo.js");
+const gameData = require("../Schemas/game-data.js")
+const rolesData = require("../Schemas/roles-schema.js");
+const usersData = require("../Schemas/users.js")
 const gen = require("../generalfunctions.js");
 const { userMention, Colors } = require("discord.js");
 

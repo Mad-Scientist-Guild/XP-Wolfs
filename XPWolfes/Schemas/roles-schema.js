@@ -14,7 +14,7 @@ const reqArray = {
 const roleSchema = mongoose.Schema({
     guildID: reqString,
     roleName: reqString,
-    channelID: reqString,
+    channelID: String,
     roleMembers: [],
     specialFunctions: []
 })
