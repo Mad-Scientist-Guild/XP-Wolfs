@@ -4,6 +4,7 @@ const rolesData = require("../Schemas/roles-schema.js");
 const usersData = require("../Schemas/users.js")
 const gen = require("../generalfunctions.js");
 const { userMention, Colors } = require("discord.js");
+const familySchema = require("../Schemas/family-schema.js");
 
 ///--------------------------------------
 ///     User data information
@@ -66,6 +67,19 @@ async function GetRole(guildId, RoleName){
     else return undefined;
 }
 
+async function GetFamily(guildId, channel){
+    const family = await familySchema.findOne({guildID: guildId, familyChannel: channel});
+
+    if(family) return family
+    else return undefined;
+}
+async function GetUsersFamily(guildId, userId){
+    const family = await familySchema.findOne({guildID: guildId, familyMembers: {$in: userId}});
+
+    if(family) return family
+    else return undefined;
+}
+
 
 
 module.exports = {
@@ -76,4 +90,6 @@ module.exports = {
     GameInProgress,
     GetDay,
     GetRole,
+    GetUsersFamily,
+    GetFamily,
 }

@@ -5,6 +5,7 @@ const { ChannelFlagsBitField, PermissionFlagsBits } = require("discord.js");
 const gen = require("../generalfunctions");
 const {eventBus} = require("../MISC/EventBus.js");
 const factionSchema = require("../Schemas/faction-Schema.js");
+const getters = require("../GeneralApi/Getter.js");
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -110,7 +111,7 @@ module.exports = {
                 }  
             } 
             finally{
-                mongoose.connection.close();
+                //mongoose.connection.close();
             }
         })
     }
@@ -201,6 +202,7 @@ async function handleCreate(options, guild, interaction){
 
 async function handleCreateAll(options, guild, interaction){
     const {client} = await interaction;
+    const game = await getters.GetGame(guild.id)
     const catID = options.getString("category_id")
 
     const category = await client.channels.cache.get(catID);
@@ -216,6 +218,8 @@ async function handleCreateAll(options, guild, interaction){
             specialFunctions: []
         })
     }
+
+    eventBus.deploy("rolesCreated", [client, game]);
 
     gen.reply(interaction, "Role has been created")
     

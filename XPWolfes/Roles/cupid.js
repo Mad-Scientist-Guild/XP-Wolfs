@@ -62,6 +62,8 @@ module.exports = {
     },
     async startup(){
         eventBus.subscribe("checkLover", checkLovers)
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
@@ -83,18 +85,7 @@ async function handleLink(options, guild, interaction){
     if(cupidData){
         const cupid = cupidData.roleMembers[0];
         const loversRole = await getters.GetRole(guild.id, "lovers");
-
-        
-
-        //Create special function
-        if(cupidData.specialFunctions.length <= 0){
-            await rolesSchema.updateOne(
-                {guildID: guild.id, roleName: "cupid"}, 
-                {$set: {specialFunctions: {lovers: [], loversDead: false}}}, 
-                {options: {upsert: true}});
-
-        }
-
+    
         //Check if users are in game
         if(!await getters.GetUser(lover1, guild.id)){
             gen.reply(interaction, "The first lover is not in the game");
@@ -177,18 +168,14 @@ async function checkLovers([UserID, game, client])
 
 
 async function createRole([client, game]){
-    const role = await rolesSchema.findOne({guildID: game._id, roleName: "fox"});
-
-    if(role){
-        await rolesSchema.updateOne(
-            {guildID: game._id, 
-                roleName: "cupid"},
-            {$set: {
-                roleMembers: [],
-                specialFunctions:{
-                    lovers: [],
-                    loversDead: false
-                }}}, 
-            {options: {upsert: true}});
-    }
+    await rolesSchema.updateOne(
+        {guildID: game._id, 
+            roleName: "cupid"},
+        {$set: {
+            roleMembers: [],
+            specialFunctions:{
+                lovers: [],
+                loversDead: false
+            }}}, 
+        {options: {upsert: true}});
 }

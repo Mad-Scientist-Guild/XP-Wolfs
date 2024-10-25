@@ -14,7 +14,7 @@ const reqArray = {
 const factionSchema = mongoose.Schema({
     guildID: reqString,
     factionName: reqString,
-    factionMembers: []
+    factionMembers: [],
 })
 
 module.exports = mongoose.model('faction-schema', factionSchema)

@@ -56,6 +56,7 @@ module.exports = {
     async startup(){
         eventBus.subscribe('peeking-girl-check', listenIn)
         eventBus.subscribe('morning', handleMorning)
+        eventBus.subscribe("rolesCreated", createRole);
 
     }
 }
@@ -68,10 +69,6 @@ async function handleListeningTime(interaction, guild, client, options)
     if(!role){
         gen.reply(interaction, "role not existent");
         return;
-    }
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
     }
     if(role.specialFunctions.UsedAbility){
         gen.reply(interaction, "You have already used your ability");
@@ -165,8 +162,8 @@ async function handleMorning([client, game]){
     {options: {upsert: true}});
 }
 
-async function createRole(guild){
-    await rolesSchema.updateOne({guildID: guild.id, roleName: "peeking-girl"}, 
+async function createRole([client, game]){
+    await rolesSchema.updateOne({guildID: game._id, roleName: "peeking-girl"}, 
         {$set: {specialFunctions: [{
             UsedAbility: false,
             StartTime: ""

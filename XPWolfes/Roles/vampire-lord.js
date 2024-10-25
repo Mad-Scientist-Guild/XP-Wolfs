@@ -70,6 +70,8 @@ module.exports = {
         eventBus.subscribe('evening', ResolveEvening)
         eventBus.subscribe('morning', ResolveMorning)
         eventBus.subscribe('checkVampire', CheckVampireDeath)
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
@@ -87,18 +89,6 @@ async function HandleKill(interaction, guild, client, options){
     if(!role){
         gen.reply(interaction, "role not existent");
         return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "vampire-lord"}, 
-            {$set: {specialFunctions: [{
-                killing: "",
-                turning: "",
-                turned: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
     }
 
     const roleRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "vampire-lord"});
@@ -135,18 +125,6 @@ async function HandleTurn(interaction, guild, client, options){
     if(!role){
         gen.reply(interaction, "role not existent");
         return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "vampire-lord"}, 
-            {$set: {specialFunctions: [{
-                killing: "",
-                turning: "",
-                turned: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
     }
 
     const roleRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "vampire-lord"});
@@ -192,19 +170,6 @@ async function ResolveNight([client, game]){
         return;
     }
 
-    if(role.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "vampire-lord"}, 
-            {$set: {specialFunctions: [{
-                killing: "",
-                turning: "",
-                turned: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
-        return;
-    }
-
     if(role.specialFunctions[0].killing != ""){
         await gen.SendToChannel(role.channelID, "Kill", "Your target is going to die this morning", client, Colors.NotQuiteBlack);
         await gen.SendFeedback(game._id, "Vampire Kill", "The vampire is killing " + userMention(role.specialFunctions[0].killing) + " tonight");
@@ -234,19 +199,6 @@ async function ResolveMorning([client, game])
     const role = await rolesSchema.findOne({guildID: game._id, roleName: "vampire-lord"});
 
     if(!role){
-        return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "vampire-lord"}, 
-            {$set: {specialFunctions: [{
-                killing: "",
-                turning: "",
-                turned: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
         return;
     }
 
@@ -296,15 +248,6 @@ async function ResolveEvening([client, game]){
     }
 
     if(role.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-lord"}, 
-            {$set: {specialFunctions: [{
-                killing: "",
-                turning: "",
-                turned: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
         return;
     }
 
@@ -340,4 +283,20 @@ async function CheckVampireDeath([UserID, game, client])
         {options: {upsert: true}});
     }
 
+}
+
+async function createRole([client, game]){
+    const role = await rolesSchema.findOne({guildID: game._id, roleName: "vampire-lord"});
+
+    if(role){
+        //create
+        await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-lord"}, 
+            {$set: {specialFunctions: [{
+                killing: "",
+                turning: "",
+                turned: "",
+                canUse: false
+        }]}}, 
+        {options: {upsert: true}});
+    }
 }

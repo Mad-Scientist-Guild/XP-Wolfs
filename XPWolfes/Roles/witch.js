@@ -70,6 +70,7 @@ module.exports = {
         eventBus.subscribe('night', ResolveNight)
         eventBus.subscribe('evening', ResolveEvening)
         eventBus.subscribe('morning', ResolveMorning)
+        eventBus.subscribe("rolesCreated", createRole);
     }
 }
 
@@ -87,11 +88,6 @@ async function HandleKill(interaction, guild, client, options){
     if(!role){
         gen.reply(interaction, "role not existent");
         return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
     }
 
     const roleRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "witch"});
@@ -128,10 +124,6 @@ async function HandleRevive(interaction, guild, client, options){
     if(!role){
         gen.reply(interaction, "role not existent");
         return;
-    }
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
     }
 
     const roleRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "witch"});
@@ -174,12 +166,6 @@ async function ResolveNight([client, game]){
         return;
     }
 
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
-        return;
-    }
-
     if(role.specialFunctions[0].killing != "" && !role.specialFunctions[0].killed){
         await gen.SendToChannel(role.channelID, "Kill", "Your target is going to die this morning", client, Colors.NotQuiteBlack);
         await gen.SendFeedback(game._id, "Witch Kill", "The witch is killing " + userMention(role.specialFunctions[0].killing) + " tonight");
@@ -200,12 +186,6 @@ async function ResolveMorning([client, game])
         return;
     }
 
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
-        return;
-    }
-
     if(!role.specialFunctions[0].revived){
         await rolesSchema.updateOne({guildID: guild.id, roleName: "witch"}, 
             {$set: {"specialFunctions.0.canRevive": true}}, 
@@ -216,12 +196,6 @@ async function ResolveEvening([client, game]){
     const role = await rolesSchema.findOne({guildID: game._id, roleName: "witch"});
 
     if(!role){
-        return;
-    }
-
-    //Create role if not there yet
-    if(role.specialFunctions.length == 0){
-        await createRole(guild);
         return;
     }
 
@@ -247,10 +221,10 @@ async function ResolveEvening([client, game]){
 }
 
 
-async function createRole(guild){
-    await rolesSchema.updateOne({guildID: guild.id, roleName: "vampire-lord"}, 
+async function createRole([client, game]){
+    await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-lord"}, 
         {$set: {specialFunctions: [{
-            canKill: true,
+            canKill: false,
             killing: "",
             killed: false,
             canRevive: false,

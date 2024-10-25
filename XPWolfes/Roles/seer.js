@@ -56,26 +56,17 @@ module.exports = {
         eventBus.subscribe('morning', ResolveCheck)
         eventBus.subscribe("evening", onEvening);
         eventBus.subscribe("night", onNight);
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
 async function HandleCheck(interaction, guild, client, options){
     const seer = await getters.GetRole(guild.id, "seer");
-    console.log("checking");
 
     if(!seer){
         await gen.reply(interaction, "role has note been created yet");
         return;
-    }
-
-    if(seer.specialFunctions.length == 0){
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "seer"}, 
-            {$set: {specialFunctions: [{
-                canUse: true,
-                checking: "",
-                checkedPrevious: []
-            }]}}
-        )
     }
 
     const seerRefresh = await getters.GetRole(guild.id, "seer");
@@ -166,6 +157,16 @@ async function onNight([client, game]){
         {$set: 
         {"specialFunctions.0.canUse": false}}, 
         {options: {upsert: true}});
+}
+
+async function createRole([client, game]){
+    await rolesSchema.updateOne({guildID: game._id, roleName: "seer"}, 
+        {$set: {specialFunctions: [{
+            canUse: false,
+            checking: "",
+            checkedPrevious: []
+        }]}}
+    )
 }
 
 

@@ -58,6 +58,8 @@ module.exports = {
     async startup(){
         eventBus.subscribe(onEvening, "evening");
         eventBus.subscribe(onNight, "night");
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
@@ -70,16 +72,6 @@ async function handleShoot(options, guild, interaction){
     if(!vigilante){
         gen.reply(interaction, "role not existent");
         return;
-    }
-
-    if(vigilante.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "vigilante"}, 
-            {$set: {specialFunctions: [{
-                shooting: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
     }
 
     const vigilanteRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "vigilante"});
@@ -128,4 +120,18 @@ async function onNight([client, game]){
         {"specialFunctions.0.canUse": false, "specialFunctions.0.shooting": ""}}, 
         {options: {upsert: true}});
 
+}
+
+async function createRole([client, game]){
+    const role = await rolesSchema.findOne({guildID: game._id, roleName: "vigilante"});
+
+    if(role){
+        //create
+        await rolesSchema.updateOne({guildID: game._id, roleName: "vigilante"}, 
+            {$set: {specialFunctions: [{
+                shooting: "",
+                canUse: false
+        }]}}, 
+        {options: {upsert: true}});
+    }
 }

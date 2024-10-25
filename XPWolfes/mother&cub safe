@@ -1,0 +1,196 @@
+async function handleMotherAbility(options, guild, interaction){
+    const {client} = interaction
+    const wwData = await rolesSchema.findOne( {guildID: guild.id, roleName: "werewolf"})
+
+    if(interaction.user.id !== wwData.specialFunctions[0].motherWolf){
+        gen.reply(interaction, "You are not the mother wolf");
+        return;
+    }
+    if(!wwData.specialFunctions[0].canGuess){
+        gen.reply(interaction, "You cannot use this ability at this time", true);
+        return;
+    }
+    if(wwData.specialFunctions[0].grownUp){
+        gen.reply(interaction, "The cub has already grown up", true);
+        return;
+    }
+
+    //Check if mother wolf
+    
+    const p1 = options.getUser("player1");
+    const p2 = options.getUser("player2");
+
+    const p1Data = users.findOne({guildID: guild.id, _id: p1});
+    const p2Data = users.findOne({guildID: guild.id, _id: p2});
+
+    //Check if both players are in the game
+    if(!p1Data){
+        gen.reply(interaction, "The player in the first parameter is not in the game");
+        return;
+    }
+    if(!p2Data){
+        gen.reply(interaction, "The player in the second parameter is not in the game");
+        return;
+    }
+
+    //Check if both players are dead
+    if(p1Data.dead){
+        gen.reply(interaction, "The player in the first parameter already dead");
+        return;
+    }
+    if(p2Data.dead){
+        gen.reply(interaction, "The player in the second parameter already dead");
+        return;
+    }
+
+    await rolesSchema.updateOne(
+        {guildID: guild.id, 
+            roleName: "werewolf"},
+        {$set: {
+            "specialFunctions.0.guessPlayers.0.player1": p1,
+            "specialFunctions.0.guessPlayers.1.player2": p2,
+            }}, 
+        {options: {upsert: true}});
+
+    gen.SendToChannel(wwData.specialFunctions[0].motherAndCubChannel, 
+        "Guess the role", 
+        "You need to guess the role of these 2 players: \n\n " 
+        + 
+        userMention(p1)
+        + "\n" 
+        + userMention(p2) + 
+        "\n\n You can use **/werewolf cub_guess** to guess the roles of the players. \n You can use **/werewolf cub_get_roles** to see what roles exist. \n\n **THE MOTHER WOLF IS NOT ALLOWED TO HELP WITH THIS**" , client, Colors.DarkRed 
+    )
+
+
+}
+async function handleCubGuess(options, guild, interaction){
+    const {client} = interaction
+    const wwData = await rolesSchema.findOne( {guildID: guild.id, roleName: "werewolf"})
+
+    if(!wwData.specialFunctions[0].canGuess){
+        gen.reply(interaction, "You cannot use this ability at this time", true);
+        return;
+    }
+    if(wwData.specialFunctions[0].grownUp){
+        gen.reply(interaction, "You have already grown up", true);
+        return;
+    }
+
+    const guess1 = options.getString("guess_player1");
+    const guess2 = options.getString("guess_player2");
+
+    const role1Data = rolesSchema.findOne({guildID: guild.id, roleName: guess1});
+    const role2Data = rolesSchema.findOne({guildID: guild.id, roleName: guess2});
+
+    //Check if both players are in the game
+    if(!role1Data){
+        gen.reply(interaction, "the first role you guessed does not exist", true);
+        return;
+    }
+    if(!role2Data){
+        gen.reply(interaction, "the second role you guessed does not exist", true);
+        return;
+    }
+
+    //Check if both players are dead
+    await rolesSchema.updateOne(
+        {guildID: guild.id, 
+            roleName: "werewolf"},
+        {$set: {
+            "specialFunctions.0.guessPlayers.0.guess": guess1,
+            "specialFunctions.0.guessPlayers.1.guess": guess2,
+            }}, 
+        {options: {upsert: true}});
+
+    await gen.SendToChannel(wwData.specialFunctions[0].motherAndCubChannel, "Guesses",
+        "You guessed: \n"+
+        "player1 - " + guess1 + "\n" +
+        "player2 - " + guess2 + "\n" +
+        "You can still change your guess untill the start of the night", client, Colors.DarkRed
+    )
+
+
+}
+async function handleGetAll(guild, interaction){
+    const allEntries = await rolesSchema.find({guildID: guild.id})
+    allRoleNames = "**Roles:** \n";
+
+    await allEntries.forEach(entry => {
+        allRoleNames = allRoleNames + `${entry.roleName}\n`
+    });
+        
+    gen.reply(interaction, allRoleNames)
+}
+
+async function CheckCubGuesses([client, game]){
+    const wwData = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
+
+    //Check if not already grown up
+    if(wwData.specialFunctions[0].grownUp){
+        return;
+    }
+
+    //Get actuall roles of guessed players
+    const player1Role = await rolesSchema.findOne({guildID: wwData.guildID, roleMembers: wwData.specialFunctions[0].guessPlayers[0].player1});
+    const player2Role = await rolesSchema.findOne({guildID: wwData.guildID, roleMembers: wwData.specialFunctions[0].guessPlayers[1].player2});
+
+    //Check if p1 is correct // protection to if statement
+    if(player1Role.roleName === wwData.specialFunctions[0].guessPlayers[0].guess)
+    {
+        await rolesSchema.updateOne({guildID: game._id, roleName: "werewolf"}, {$set: {"specialFunctions.0.correct": wwData.specialFunctions[0].guessPlayers[0].player1}}, {upsert: true});
+        await gen.LeftHouse(wwData.specialFunctions[0].cub, game._id)
+        gen.addToNightKilled(wwData.specialFunctions[0].guessPlayers[0].player1, game._id, client, "Cub")
+        return;
+    }
+    if(player2Role.roleName === wwData.specialFunctions[0].guessPlayers[1].guess)
+    {
+        await rolesSchema.updateOne({guildID: game._id, roleName: "werewolf"}, {$set: {"specialFunctions.0.correct": wwData.specialFunctions[0].guessPlayers[1].player2}}, {upsert: true});
+        await gen.LeftHouse(wwData.specialFunctions[0].cub, game._id)
+        gen.addToNightKilled(wwData.specialFunctions[0].guessPlayers[1].player2, game._id, client, "Cub")
+        return;
+    }
+}
+async function ChangeCubRole([client, game]){
+    const wwData = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
+
+    //Check if not already grown up
+    if(wwData.specialFunctions[0].grownUp){
+        return;
+    }
+
+    //Check if p1 is correct // protection to if statement
+    if(wwData.specialFunctions[0].correct != "" && wwData.specialFunctions[0].correct != null && wwData.specialFunctions[0].correct != undefined)
+    {
+        //Player was guessed correct
+        //Cub will turn into werewolf in the morning
+
+
+        //Send feedback to mods
+        await gen.SendFeedback(game._id, "Cub Guessed correctly", "The cub guessed the role of **" + userMention(wwData.specialFunctions[0].correct) + "** correctly. They are turned into a werewolf!", client)
+        //Add cub to werewolfs
+        await gen.SendToChannel(wwData.specialFunctions[0].motherAndCubChannel, "You are growing up!", "You guessed the role of " + userMention(wwData.specialFunctions[0].correct) + " Correct \n You will now turn into a werewolf", client, Colors.Red);
+        await gen.addToChannel(wwData.specialFunctions[0].cub, await gen.getChannel(client, wwData.channelID));
+        await rolesSchema.updateOne({guildID: game._id, roleName: "werewolf"}, {$push: {roleMembers: wwData.specialFunctions[0].cub}}, {upsert: true});
+        await rolesSchema.updateOne({guildID: game._id, roleName: "werewolf"}, {$set: {"specialFunctions.0.grownUp": true, "specialFunctions.0.guessPlayers": []}}, {upsert: true});
+
+        return;
+    }
+    else{
+        //Not guessed correctly
+        await gen.SendToChannel(wwData.specialFunctions[0].motherAndCubChannel, "Still a cub", "You did not guess correctly", client, Colors.Red);
+
+        await rolesSchema.updateOne({guildID: game._id, roleName: "werewolf"}, 
+            {$set: 
+                {"specialFunctions.0.guessPlayers": [
+                    {
+                        player1: "",
+                        guess: ""
+                    },
+                    {
+                        player2: "",
+                        guess: ""
+                    }]
+                }}, {upsert: true});
+    }
+}

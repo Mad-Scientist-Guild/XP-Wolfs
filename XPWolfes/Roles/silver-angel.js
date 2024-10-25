@@ -58,6 +58,8 @@ module.exports = {
     async startup(){
         eventBus.subscribe(onEvening, "evening");
         eventBus.subscribe(onNight, "night");
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
@@ -72,19 +74,7 @@ async function handleProtect(options, guild, interaction){
         return;
     }
 
-    if(silverAngel.specialFunctions.length == 0){
-        //create
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "silver-angel"}, 
-            {$set: {specialFunctions: [{
-                protecting: "",
-                protectedLast: "",
-                canUse: true
-        }]}}, 
-        {options: {upsert: true}});
-    }
-    const silverAngelRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "silver-angel"});
-
-    if(!silverAngelRefresh.specialFunctions[0].canUse){
+    if(!silverAngel.specialFunctions[0].canUse){
         gen.reply(interaction, "Can't use your ability at this time");
         return;
     }
@@ -94,7 +84,7 @@ async function handleProtect(options, guild, interaction){
         return;
     }
 
-    if(silverAngelRefresh.specialFunctions[0].protectedLast == options.getUser("player").id){
+    if(silverAngel.specialFunctions[0].protectedLast == options.getUser("player").id){
         gen.reply(interaction, "you can't protect the same person 2 nights in a row");
     }
 
@@ -104,7 +94,7 @@ async function handleProtect(options, guild, interaction){
         {options: {upsert: true}});
     
     await gen.SendFeedback(guild.id, "Silver angel protecting", "The silver angel is protecting " + userMention(options.getUser("player").id), client, Colors.White)
-    await gen.SendToChannel(silverAngelRefresh.channelID, "Protecting", "You chose to protect " + userMention(options.getUser("player").id), client, Colors.White);
+    await gen.SendToChannel(silverAngel.channelID, "Protecting", "You chose to protect " + userMention(options.getUser("player").id), client, Colors.White);
 }
 
 async function onEvening([client, game]){
@@ -119,4 +109,14 @@ async function onNight([client, game]){
         {$set: 
         {"specialFunctions.0.canUse": false}}, 
         {options: {upsert: true}});
+}
+
+async function createRole([client, game]){
+    await rolesSchema.updateOne({guildID: game._id, roleName: "silver-angel"}, 
+        {$set: {specialFunctions: [{
+            protecting: "",
+            protectedLast: "",
+            canUse: false
+    }]}}, 
+    {options: {upsert: true}});
 }

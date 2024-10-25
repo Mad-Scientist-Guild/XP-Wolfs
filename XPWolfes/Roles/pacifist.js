@@ -51,7 +51,7 @@ module.exports = {
         })
     },
     async startup(){
-        
+        eventBus.subscribe("rolesCreated", createRole);
     }
 }
 
@@ -95,4 +95,16 @@ async function HandleCancelLynch(interaction, guild, client, options){
     await gen.SendFeedback(guild.id, "PACIFIST ACTION", `The pacifics is canceling the vote today`, client, Colors.Blue)
     await gen.SendToChannel(role.channelID, "PEACE BY FORCE", `You have chosen to stop the lynch today, The town will be notified when the lynch happens`, client, Colors.Green)
     await gen.noReply(interaction);
+}
+
+async function createRole([client, game]){
+    await rolesSchema.updateOne(
+        {guildID: game._id, roleName: "pacifist"}, 
+        {$set: 
+            {
+                specialFunctions: [{usingAbility: false}]
+            }
+        },
+        {upsert: true}
+    )
 }

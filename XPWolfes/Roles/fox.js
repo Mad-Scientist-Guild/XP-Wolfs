@@ -65,26 +65,16 @@ module.exports = {
     },
     async startup(){
         eventBus.subscribe('morning', ResolveCheck)
+        eventBus.subscribe('evening', ResolveEvening)
+        eventBus.subscribe('night', ResolveNight)
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
 async function HandleCheck(interaction, guild, client, options){
     
     const foxData = await rolesSchema.findOne({guildID: guild.id, roleName: "fox"});
-
-    if(foxData.specialFunctions.length == 0){
-        await rolesSchema.updateOne(
-            {guildID: game._id, 
-                roleName: "fox"},
-            {$set: {
-                specialFunctions:{
-                    canCheck: true,
-                    isChecking: false,
-                    checking: [],
-                    hasAbility: true
-                }}}, 
-            {options: {upsert: true}});
-    }
     
     if(!foxData.canCheck){
         gen.reply(interaction, "You can't check people at this time.");
@@ -146,6 +136,52 @@ async function ResolveCheck([client, game])
         return;
     }
 
+}
+
+async function ResolveEvening([client, game]){
+    const role = await rolesSchema.findOne({guildID: game._id, roleName: "fox"});
+
+    if(!role){
+        return;
+    }
+
+    if(role.specialFunctions.length == 0){
+        return;
+    }
+
+    await rolesSchema.updateOne({guildID: game._id, roleName: "fox"}, 
+        {$set: {"specialFunctions.0.canCheck": true}}, 
+    {options: {upsert: true}});
+}
+async function ResolveNight([client, game]){
+    const role = await rolesSchema.findOne({guildID: game._id, roleName: "fox"});
+
+    if(!role){
+        return;
+    }
+
+    if(role.specialFunctions.length == 0){
+        return;
+    }
+
+    await rolesSchema.updateOne({guildID: game._id, roleName: "fox"}, 
+        {$set: {"specialFunctions.0.canCheck": false}}, 
+    {options: {upsert: true}});
+}
+
+
+async function createRole([client, game]){
+    await rolesSchema.updateOne(
+        {guildID: game._id, 
+            roleName: "fox"},
+        {$set: {
+            specialFunctions:{
+                canCheck: false,
+                isChecking: false,
+                checking: [],
+                hasAbility: true
+            }}}, 
+        {options: {upsert: true}});
 }
 
 

@@ -58,6 +58,8 @@ module.exports = {
         eventBus.subscribe('night', ResolveNight)
         eventBus.subscribe('evening', ResolveEvening)
         eventBus.subscribe('morning', ResolveMorning)
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
 }
 
@@ -75,11 +77,6 @@ async function HandleCheck(interaction, guild, client, options){
     if(!role){
         gen.reply(interaction, "role not existent");
         return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
     }
 
     if(!role.specialFunctions[0].canUse){
@@ -107,12 +104,6 @@ async function ResolveMorning([client, game]){
     const role = await rolesSchema.findOne({guildID: game._id, roleName: "monster-hunter"});
 
     if(!role){
-        return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
         return;
     }
 
@@ -183,12 +174,6 @@ async function ResolveEvening([client, game]){
         return;
     }
 
-    //Create role if not there yet
-    if(role.specialFunctions.length == 0){
-        await createRole(guild);
-        return;
-    }
-
     await rolesSchema.updateOne({guildID: guild.id, roleName: "monster-hunter"}, 
         {$set: {"specialFunctions.0.canUse": true}}, 
     {options: {upsert: true}});
@@ -200,12 +185,6 @@ async function ResolveNight([client, game]){
     const role = await rolesSchema.findOne({guildID: game._id, roleName: "monster-hunter"});
 
     if(!role){
-        return;
-    }
-
-    if(role.specialFunctions.length == 0){
-        //create
-        await createRole(guild);
         return;
     }
 
@@ -226,15 +205,17 @@ async function ResolveNight([client, game]){
             return;
         }
     }
+
+    //FINISH THIS YOU DUMBASS
 }
 
 
-async function createRole(guild){
-    await rolesSchema.updateOne({guildID: guild.id, roleName: "monster-hunter"}, 
+async function createRole([client, game]){
+    await rolesSchema.updateOne({guildID: game._id, roleName: "monster-hunter"}, 
         {$set: {specialFunctions: [{
             checking: "",
             found: false,
-            canUse: true
+            canUse: false
     }]}}, 
     {options: {upsert: true}});
 }

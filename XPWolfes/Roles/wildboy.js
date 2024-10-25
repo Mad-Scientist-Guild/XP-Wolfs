@@ -65,7 +65,8 @@ module.exports = {
 
     mentorDies,
     async startup(){
-        eventBus.subscribe('GameCreation', createRole)
+        eventBus.subscribe("rolesCreated", createRole);
+
     }
     
 }

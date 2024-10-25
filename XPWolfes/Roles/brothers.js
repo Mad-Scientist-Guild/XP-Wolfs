@@ -62,7 +62,7 @@ module.exports = {
         })  
     },
     async startup(){
-
+        eventBus.subscribe("rolesCreated", createRole);
     }
 }
     
@@ -165,16 +165,15 @@ async function checkVotes(options, guild, interaction){
 }
 
 async function createRole([client, game]){
-    await rolesSchema.create({
-        guildID: game._id,
-        roleName: "brothers",
-        roleMembers: [],
-        channelID: "",
-        specialFunctions: [{
-            canVote: true,
-            b1Voted: "",
-            b2Voted: "",
-            b3Voted: "",
-        }]
-    })
+    await rolesSchema.updateOne(
+        {guildID: game._id, 
+            roleName: "brothers"},
+        {$set: {
+            specialFunctions: {
+                canVote: true,
+                b1Voted: "",
+                b2Voted: "",
+                b3Voted: "",
+            }}}, 
+        {options: {upsert: true}});
 }

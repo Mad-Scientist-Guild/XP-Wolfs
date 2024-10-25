@@ -165,7 +165,7 @@ async function killNightKilled(client, game){
 }
 
 //Kill player right then and there
-async function Kill(UserID, GuildID, client, guild = null){
+async function Kill(UserID, GuildID, client, guild = null, Cause = ""){
     //Kill person
     if(client){
         if(guild == null) guild = getGuild(client, GuildID)
@@ -185,9 +185,15 @@ async function Kill(UserID, GuildID, client, guild = null){
             return;
         }
 
-        //Rework this
         const KilledPlayer = await users.findOne({_id: UserID, guildID: GuildID})
 
+        const KilledPlayerFamily = await getters.GetUsersFamily(GuildID, UserID);
+
+        if(KilledPlayerFamily.familyProtected){
+            await SendFeedback(GuildID, "Protected", userMention(UserID) + " was protected and didn't die", client, Colors.White);
+            return;
+        }
+            
         await gameData.updateOne({_id: GuildID}, {$push: {killedLastNight: KilledPlayer._id}}, {options: {upsert: true}});
 
         if(KilledPlayer.isMayor){
@@ -205,15 +211,6 @@ async function Kill(UserID, GuildID, client, guild = null){
             }
         }
     
-        //Handle wildboy
-        const wildboyRole = await rolesSchema.findOne({guildID: GuildID, roleName: "wildboy"})
-
-        if(wildboyRole && wildboyRole.specialFunctions[0]){
-            if(wildboyRole.specialFunctions[0].mentor == UserID){
-                await wildboy.mentorDies(GuildID, client)
-            }
-        }
-
         await eventBus.deploy('checkLover', [UserID, game, client]);
         await eventBus.deploy('checkVampire', [UserID, game, client]);
     }

@@ -13,6 +13,8 @@ const factionSchema = require("../Schemas/faction-Schema.js");
 const votesSchema = require("../Schemas/vote-schema")
 const mayor = require("../Schemas/mayor-schema")
 const rolesSchema = require("../Schemas/roles-schema")
+const familySchema = require("../Schemas/family-schema")
+
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -170,6 +172,20 @@ module.exports = {
                         )
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('reset_botcommands')
+                .setDescription('activate a specific time event')
+
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('force_join_all')
+                .setDescription('A way for admins to add all players to the game (can only be used before the game starts).')
+                .addRoleOption(option => 
+                    option.setName("villager_role")
+                        .setDescription("role")
+                        .setRequired(true)
+                )
+        )
         ,
     async execute(interaction){
 
@@ -242,6 +258,12 @@ module.exports = {
                         case 'activate_time_event':
                             await timedMessageEventActivation(options, guild, interaction, client)
                             return;
+                        case 'reset_botcommands':
+                            await resetBotCommands(guild, interaction, client)
+                            return;
+                        case 'force_join_all':
+                            handleForceJoinAll(options, guild, interaction, client)
+                            break;
                     }
             } 
             finally{
@@ -280,6 +302,38 @@ async function handleForceJoin(UserID, guild, interaction, client){
     })
     await gen.SendFeedback(guild.id, "PLAYER JOINED!", `**${gen.getName(interaction, UserID)}** Joined the game`, client)
     await gen.reply(interaction, "You have put the player into the game!")
+}
+
+async function handleForceJoinAll(options, guild, interaction, client){
+    const roleMembers = options.getRole("villager_role").members;
+    const game = await gameData.findOne({_id: guild.id});
+
+    roleMembers.forEach(async user => {
+        const joinedUser = getters.GetUser(user.id, guild.id);
+
+        if(!game){
+            await gen.reply(interaction, "There is no game available to join.")
+            return;
+        }
+        if(joinedUser && !joinedUser.dead && game.alive.includes(user.id)){
+            gen.reply(interaction, "This player has already joined")
+            return;
+        }
+        if(joinedUser && joinedUser.dead){
+            await users.updateOne({ _id: user.id }, { $set: { "dead": false } }, { options: { upsert: true } });
+            await gen.SendFeedback(guild.id, "PLAYER JOINED!", `${userMention(user.id)} Joined the game`, client)
+            await gen.reply(interaction, "You have put the player into the game!")
+            return;
+        }
+        await users.create({
+            _id: user.id,
+            guildID: guild.id,
+            dead: false,
+            voted: false
+        })
+        await gen.SendFeedback(guild.id, "PLAYER JOINED!", `**${userMention(user.id)}** Joined the game`, client)
+    })
+    await gen.reply(interaction, "All players are joined in!");
 }
 
 async function handleGetJoined(guild, interaction, client){
@@ -420,6 +474,15 @@ async function timedMessageEventActivation(options, guild, interaction, client){
     gen.noReply(interaction);
 }
 
+async function resetBotCommands(guild, interaction, client){
+
+    // This takes ~1 hour to update
+    client.application.commands.set([]);
+    // This updates immediately
+    guild.commands.set([]);
+
+    gen.reply(interaction, "Reset commands. Might take ~1 hour to go into effect");
+}
 
 ///
 /// GAME SPECIFIC COMMANDS
@@ -595,8 +658,26 @@ async function handleStart(guild, interaction, client)
         await gen.reply(interaction, "Game has already started");
         return;
     }
-
     //Logic
+
+    //Add users to correct channels
+    const roles = await rolesSchema.find({guildID: guild.id});
+    
+    await roles.forEach(async role => {
+        await role.roleMembers.forEach(async player => {
+            gen.addToChannel(player, await gen.getChannel(client, role.channelID))
+        });
+    });
+
+    //Add users to correct channels
+    const families = await familySchema.find({guildID: guild.id});
+    
+    await families.forEach(async family => {
+        await family.familyMembers.forEach(async player => {
+            gen.addToChannel(player, await gen.getChannel(client, family.familyChannel))
+        });
+    });
+
     await gameData.updateOne({_id: guild.id}, { $set: {started: true, alive: alivePlayers, day: 1}}, {options: { upsert: true } })
     await gen.noReply(interaction)
     await gen.SendFeedback(guild.id, "STARTED", "The game has started", client, Colors.Blue)
