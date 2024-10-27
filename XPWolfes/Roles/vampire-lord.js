@@ -170,9 +170,26 @@ async function ResolveNight([client, game]){
         return;
     }
 
+    await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-lord"}, 
+        {$set: {"specialFunctions.0.canUse": false}}, 
+    {options: {upsert: true}});
+
+    const rolePlayer = await getters.GetUser(role.roleMembers[0], game._id);
+
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].killing != "" || role.specialFunctions[0].turning != ""){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "vampire-lord"},
+                {$set: {"specialFunctions.0.killing": "", "specialFunctions.0.turning": ""}},
+                {upsert: true}
+            )
+        }
+        return;
+    }
+
     if(role.specialFunctions[0].killing != ""){
         await gen.SendToChannel(role.channelID, "Kill", "Your target is going to die this morning", client, Colors.NotQuiteBlack);
-        await gen.SendFeedback(game._id, "Vampire Kill", "The vampire is killing " + userMention(role.specialFunctions[0].killing) + " tonight");
+        await gen.SendFeedback(game._id, "Vampire Kill", "The vampire is killing " + userMention(role.specialFunctions[0].killing) + " tonight", client);
         await gen.addToNightKilled(role.specialFunctions[0].killing, game._id, client, "vampire-lord");
 
         await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-lord"}, 
@@ -184,10 +201,10 @@ async function ResolveNight([client, game]){
 
     if(role.specialFunctions[0].turning != ""){
         await gen.SendToChannel(role.channelID, "Turning", "Your target is going to become a vampire spawn this morning", client, Colors.NotQuiteBlack);
-        await gen.SendFeedback(game._id, "Vampire Kill", "The vampire is turning " + userMention(role.specialFunctions[0].killing) + " tonight");
+        await gen.SendFeedback(game._id, "Vampire Kill", "The vampire is turning " + userMention(role.specialFunctions[0].killing) + " tonight", client);
 
         await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-lord"}, 
-            {$set: {"specialFunctions.0.killing": "", "specialFunctions.0.canUse": false}}, 
+            {$set: {"specialFunctions.0.killing": ""}}, 
         {options: {upsert: true}});
 
         return;
@@ -208,7 +225,7 @@ async function ResolveMorning([client, game])
 
         if(!spawn){
             await rolesSchema.create({
-                guildID: guild.id,
+                guildID: game._id,
                 roleName: "vampire-spawn",
                 channelID: role.channelID,
                 roleMembers: [],
@@ -216,8 +233,8 @@ async function ResolveMorning([client, game])
             })
         }
 
-        await gen.addToChannel(role.specialFunctions[0].turning, await gen.getChannel(client, role.channelID));
-        await gen.SendToChannel(role.channelID, "New Vampire Spawn", userMention(role.specialFunctions[0].turning), " you are now a vampire spawn!");
+        gen.addToChannel(role.specialFunctions[0].turning, await gen.getChannel(client, role.channelID));
+        await gen.SendToChannel(role.channelID, "New Vampire Spawn", userMention(role.specialFunctions[0].turning) + " you are now a vampire spawn!", client);
 
         await rolesSchema.updateOne({guildID: game._id, roleName: "vampire-spawn"}, 
             {$push: {roleMembers: role.specialFunctions[0].turning}}, 
@@ -227,7 +244,7 @@ async function ResolveMorning([client, game])
             {$push: {factionMembers: role.specialFunctions[0].turning}}, 
         {options: {upsert: true}});
 
-        await factionSchema.updateOne({guildID: guild.id, factionMembers: 
+        await factionSchema.updateOne({guildID: game._id, factionMembers: 
             {$in: [role.specialFunctions[0].turning]}}, 
             {$pull: {factionMembers: role.specialFunctions[0].turning}}, 
             {options: {upsert:true}});
@@ -240,6 +257,8 @@ async function ResolveMorning([client, game])
         
     }
 }
+
+
 async function ResolveEvening([client, game]){
     const role = await rolesSchema.findOne({guildID: game._id, roleName: "vampire-lord"});
 

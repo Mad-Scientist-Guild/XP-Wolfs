@@ -167,6 +167,18 @@ async function ResolveNight([client, game]){
     await rolesSchema.updateOne({guildID: game._id, roleName: "fox"}, 
         {$set: {"specialFunctions.0.canCheck": false}}, 
     {options: {upsert: true}});
+
+    const rolePlayer = await getters.GetUser(role.roleMembers[0], game._id);
+
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].isChecking){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "fox"},
+                {$set: {"specialFunctions.0.isChecking": false, checking: []}},
+                {upsert: true}
+            )
+        }
+    }
 }
 
 

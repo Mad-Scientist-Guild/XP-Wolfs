@@ -188,25 +188,27 @@ async function ResolveNight([client, game]){
         return;
     }
 
+    await rolesSchema.updateOne(
+        {guildID: game._id, roleName: "monster-hunter"},
+        {$set: {"specialFunctions.0.canUse": false}},
+        {upsert: true}
+    )
+
     if(role.specialFunctions[0].checking == ""){
         return;
     }
 
-    //Check if evil faction
-    if(role.specialFunctions[0].found){
-        const playerFaction = await gen.GetPlayersFaction(role.specialFunctions[0].checking, role.guildID);
+    const rolePlayer = await getters.GetUser(role.roleMembers[0], game._id);
 
-        if(playerFaction == "werewolfs" || playerFaction == "undead"){
-            await gen.SendToChannel(role.channelID, "Locked in", "Your choice was locked in.", client);
-            await gen.SendFeedback(game._id, "Monster hunter kill", "The monster hunter is going to kill " + userMention(role.specialFunctions[0].checking) + "tonight", client);
-
-            await gen.addToNightKilled(role.specialFunctions[0].checking, game._id, client, "monster hunter");
-
-            return;
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].checking != ""){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "monster-hunter"},
+                {$set: {"specialFunctions.0.checking": "", checking: []}},
+                {upsert: true}
+            )
         }
     }
-
-    //FINISH THIS YOU DUMBASS
 }
 
 

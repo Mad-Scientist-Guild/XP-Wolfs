@@ -6,6 +6,7 @@ const gameData = require("../Schemas/game-data.js");
 const { GuildMember, PermissionFlagsBits, Colors } = require("discord.js");
 const rolesSchema = require("../Schemas/roles-schema.js");
 const {eventBus} = require('../MISC/EventBus.js');
+const getters = require("../GeneralApi/Getter.js")
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -90,14 +91,14 @@ async function handleVoteNew(options, guild, interaction){
     const {client} = interaction;
     const wwData = await rolesSchema.findOne({guildID: guild.id, roleName: "werewolf"});
     const commandUser = await users.findOne({guildID: guild.id, _id: interaction.user.id})
-    const votedOnPlayerID = await options.getUser("player")
+    const votedOnPlayerID = await options.getUser("player").id
     const votedOnPlayerData = await users.findOne({guildID: guild.id, _id: votedOnPlayerID})
 
     if(commandUser.dead){
         gen.reply(interaction, "You are already dead")
         return;
     }
-    if(wwData.roleMembers.includes(votedOnPlayerID.id)){
+    if(wwData.roleMembers.includes(votedOnPlayerID)){
         gen.reply(interaction, "You cannot vote to kill one of your other werewolfs")
         return;
     }
@@ -130,10 +131,10 @@ async function handleVoteNew(options, guild, interaction){
 
     //Has this person been voted on before
     //If yes, add user to the votedBy array
-    if(wwData.specialFunctions[0].votes.some(player => player.votedPlayer === votedOnPlayerID.id)){
+    if(wwData.specialFunctions[0].votes.some(player => player.votedPlayer === votedOnPlayerID)){
         await rolesSchema.updateOne({
-            guildID: guild.id, 
-            "specialFunctions.0.votes.votedPlayer": votedOnPlayerID.id
+            guildID: guild.id, roleName: "werewolf",
+            "specialFunctions.0.votes.votedPlayer": votedOnPlayerID
         }, 
         {
             $push: {"specialFunctions.0.votes.$.votedBy": commandUser._id}
@@ -143,10 +144,11 @@ async function handleVoteNew(options, guild, interaction){
 
     //else create new entry
     else{
-        await rolesSchema.updateOne({guildID: guild.id}, {$push: {"specialFunctions.0.votes": {votedPlayer: votedOnPlayerID.id, votedBy: [commandUser._id]}}}, {options: {upsert: true}});
+        await rolesSchema.updateOne({guildID: guild.id, roleName: "werewolf"}, 
+            {$push: {"specialFunctions.0.votes": {votedPlayer: votedOnPlayerID, votedBy: [commandUser._id]}}}, {options: {upsert: true}});
     }
 
-    gen.SendToChannel(wwData.channelID, "Werewolf vote", gen.getName(interaction, interaction.user.id) + " voted for " + gen.getName(interaction, votedOnPlayerID.id), client, Colors.Red);
+    gen.SendToChannel(wwData.channelID, "Werewolf vote", userMention(interaction.user.id) + " voted for " + userMention(votedOnPlayerID), client, Colors.Red);
     gen.reply(interaction, "you voted.")
 
 
@@ -169,7 +171,7 @@ async function StartEvening([client, game]){
 }
 async function CheckKill([client, game]){
     const wwData = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
-    const ancient = getters.GetRole(guild.id, "ancient-wolf")
+    const ancient = await getters.GetRole(game._id, "ancient-wolf")
 
     if(!wwData || wwData.specialFunctions.length == 0){
         return;
@@ -216,15 +218,14 @@ async function CheckKill([client, game]){
                     await gen.LeftHouse(element, game._id);
                 }
             });
-
-            
+ 
             return;
         }
 
         //Kill person
-        gen.SendToChannel(wwData.channelID, "VOTE CONCLUDED", "You decided to eat **" + gen.getName(null, sortedVotes[0].votedPlayer, client) + "**", client, Colors.Red)
-        gen.SendFeedback(game._id, "Werewolf kill", "The werewolfs have decided to eat **" + gen.getName(null, sortedVotes[0].votedPlayer, client) + "**", client)
-        gen.addToNightKilled(sortedVotes[0].id, game._id, client, "Werewolfs")
+        gen.SendToChannel(wwData.channelID, "VOTE CONCLUDED", "You decided to eat **" + userMention(sortedVotes[0].votedPlayer) + "**", client, Colors.Red)
+        gen.SendFeedback(game._id, "Werewolf kill", "The werewolfs have decided to eat **" + userMention(sortedVotes[0].votedPlayer) + "**", client)
+        gen.addToNightKilled(sortedVotes[0].votedPlayer, game._id, client, "Werewolfs")
 
         wwData.roleMembers.forEach(async element => {
             let user = await users.findOne({_id: element, guildID: game._id});

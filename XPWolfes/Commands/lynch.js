@@ -79,8 +79,8 @@ async function NewVote(interaction, guild, VotedOn){
         }
         await users.updateOne({_id: interaction.user.id, guildID: guild.id}, {$set: {votedOn: VotedOn, voted: true}}, {options: {upsert: true}});
 
-        gen.SendToChannel(game.voteChannel, "LYNCH VOTE", "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, VotedOn) + "** to lynch", client)
-        gen.noReply(interaction);
+        gen.SendToChannel(game.channels[0].voteChannel, "LYNCH VOTE", "**" + gen.getName(interaction, interaction.user.id) + "** has voted on **" + gen.getName(interaction, VotedOn) + "** to lynch", client)
+        gen.reply(interaction, "you voted");
     }
     else{
         gen.reply(interaction, "this person is already dead", true);

@@ -99,7 +99,7 @@ async function protectFamily(options, interaction, guild, client){
 async function ResolveAfternoon([client, game]){
  
     await familySchema.updateOne(
-        {guildID: guild.id, familyProtected: true}, 
+        {guildID: game._id, familyProtected: true}, 
         {$set: {familyProtected: false}}, 
         {options: {upsert: true}});
 
@@ -110,12 +110,28 @@ async function ResolveAfternoon([client, game]){
         {options: {upsert: true}}
     )
 }
+
 async function ResolveEvening([client, game]){
+
+    const role = await getters.GetRole(game._id, "priest");
+
     await rolesSchema.updateOne(
         {guildID: game._id, roleName: "priest"}, 
         {$set: {"specialFunctions.0.canUse": false}},
         {options: {upsert: true}}
     )
+
+    if(!role.specialFunctions[0].protecting){
+        return;
+    }
+
+    const family = await familySchema.findOne({guildID: game._id, familyProtected: true});
+
+    if(family){
+        await family.familyMembers.forEach(async member => {
+            await setters.ProtectPlayer(game._id, member);
+        })
+    }
 }
 
 

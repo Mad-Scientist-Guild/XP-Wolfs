@@ -59,7 +59,6 @@ module.exports = {
     }
 }
 
-
 //Resolve Command Functions
 async function handleCunning(guild, interaction, options){
     const {client} = interaction

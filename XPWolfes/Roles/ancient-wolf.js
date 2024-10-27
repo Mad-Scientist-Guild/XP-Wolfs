@@ -60,12 +60,12 @@ module.exports = {
 
 
 //Resolve Command Functions
-async function handleAncient(guild, interaction){
+async function handleAncient(interaction, guild){
     const {client} = interaction
-    const wwData = getters.GetRole(guild.id, "werewolf")
-    const ancient = getters.GetRole(guild.id, "ancient-wolf")
+    const wwData = await getters.GetRole(guild.id, "werewolf")
+    const ancient = await getters.GetRole(guild.id, "ancient-wolf")
 
-    if(ancient.specialFunctions[0].canUse){
+    if(!ancient.specialFunctions[0].canUse){
         gen.reply(interaction, "Can't use this ability at this time");
         return;
     }
@@ -92,6 +92,8 @@ async function handleAncient(guild, interaction){
         )
     
         gen.SendToChannel(wwData.channelID, "Turning", "The anchient wolf has decided to turn the person you are eating tonight", client, Colors.DarkOrange)
+        gen.SendFeedback(guild.id, "Werewolfs turning", "The ancient wolf is turning the werewolves kill target tonight", client, Colors.DarkOrange)
+        gen.reply(interaction, "You are turning your target tonight");
     }
 }
 
@@ -99,7 +101,7 @@ async function handleAncient(guild, interaction){
 //Resolve Timebased Functions
 async function ancientWolfTurning([client, game]){
     const wwData = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
-    const ancient = getters.GetRole(guild.id, "ancient-wolf")
+    const ancient = await getters.GetRole(game._id, "ancient-wolf")
 
     if(!ancient || ancient.specialFunctions.length == 0){
         return;
@@ -139,6 +141,20 @@ async function ResolveNight([client, game]){
         {$set: {"specialFunctions.0.canUse": false}},
         {options: {upsert: true}}
     )
+
+    const ancient = await getters.GetRole(game._id, "ancient-wolf")
+    const ancientPlayer = await getters.GetUser(ancient.roleMembers[0], game._id);
+
+    if(ancientPlayer && ancientPlayer.blocked){
+        if(ancient.specialFunctions[0].turning){
+
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "ancient-wolf"},
+                {$set: {"specialFunctions.0.turning": false}},
+                {upsert: true}
+            )
+        }
+    }
 }
 
 //Create role

@@ -107,6 +107,23 @@ async function onNight([client, game]){
     const vigilante = await rolesSchema.findOne({guildID: game._id, roleName: "vigilante"});
     const vilagers = await factionSchema.findOne({guildID: game._id, factionName: "vilagers"});
 
+    await rolesSchema.updateOne({guildID: game._id, roleName: "vigilante"}, 
+        {$set: {"specialFunctions.0.canUse": false}}, 
+        {options: {upsert: true}});
+
+        
+    const rolePlayer = await getters.GetUser(vigilante.roleMembers[0], game._id);
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].shooting != ""){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "vigilante"},
+                {$set: {"specialFunctions.0.shooting": ""}},
+                {upsert: true}
+            )
+        }
+        return;
+    }
+
     if(vigilante.specialFunctions.length > 0 && vigilante.specialFunctions[0].shooting != ""){
         await gen.addToNightKilled(vigilante.specialFunctions[0].shooting, game._id, client, "Shot by vigilante");
 
@@ -117,7 +134,7 @@ async function onNight([client, game]){
 
     await rolesSchema.updateOne({guildID: game._id, roleName: "vigilante"}, 
         {$set: 
-        {"specialFunctions.0.canUse": false, "specialFunctions.0.shooting": ""}}, 
+        {"specialFunctions.0.shooting": ""}}, 
         {options: {upsert: true}});
 
 }

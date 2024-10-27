@@ -34,7 +34,7 @@ module.exports = {
         await mongo().then(async mongoose => {
             try{
                 let cupid
-                const cuSchema = await rolesSchema.findOne({_id: guild.id, roleName: "cupid"});
+                const cuSchema = await rolesSchema.findOne({guildID: guild.id, roleName: "cupid"});
                 if(cuSchema) { cupid = await cuSchema.roleMembers.includes(interaction.user.id)}
                 if(cupid || admin){
                     if(!admin){
@@ -119,7 +119,7 @@ async function handleLink(options, guild, interaction){
         gen.addToChannel(lover1, loversChannel);
         gen.addToChannel(lover2, loversChannel);
 
-        await factionSchema.updateOne({guildID: guild.id, factionName: "lovers"}, {$set: {factionMembers: [lover1, lover2]}}, {options: {upsert:true}});
+        await factionSchema.updateOne({guildID: guild.id, factionName: "lovers"}, {$set: {factionMembers: [lover1, lover2, cupid]}}, {options: {upsert:true}});
         await factionSchema.updateOne({guildID: guild.id, factionMembers: {$in: [lover1]}}, {$pull: {factionMembers: lover1}}, {options: {upsert:true}});
         await factionSchema.updateOne({guildID: guild.id, factionMembers: {$in: [lover2]}}, {$pull: {factionMembers: lover2}}, {options: {upsert:true}});
 

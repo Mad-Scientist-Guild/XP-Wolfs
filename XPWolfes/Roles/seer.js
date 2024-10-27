@@ -104,10 +104,12 @@ async function ResolveCheck([client, game])
     }
 
     const targetRole = await rolesSchema.findOne({guildID: game._id, roleMembers: {$in: [seer.specialFunctions[0].checking]}});
-    if(seer.specialFunctions[0].checkedPrevious.includes(seer.specialFunctions[0].checking) || targetRole.roleName == "grave-robber"){
-        //Return role
-        gen.SendToChannel(seer.channelID, "Results", "You see that " + userMention(seer.specialFunctions[0].checking) + " is a " + targetRole.roleName, client);
-        return;
+    if(targetRole){
+        if(seer.specialFunctions[0].checkedPrevious.includes(seer.specialFunctions[0].checking) || targetRole.roleName == "grave-robber"){
+            //Return role
+            gen.SendToChannel(seer.channelID, "Results", "You see that " + userMention(seer.specialFunctions[0].checking) + " is a " + targetRole.roleName, client);
+            return;
+        }
     }
 
     //Return faction
@@ -144,12 +146,11 @@ async function onEvening([client, game]){
 
 async function onNight([client, game]){
 
-    const seer = await getters.GetRole(game._id, "seer");
-    if(!seer){
+    const role = await getters.GetRole(game._id, "seer");
+    if(!role){
         return;
     }
-
-    if(seer.specialFunctions.length == 0){
+    if(role.specialFunctions.length == 0){
         return;
     }
 
@@ -157,6 +158,19 @@ async function onNight([client, game]){
         {$set: 
         {"specialFunctions.0.canUse": false}}, 
         {options: {upsert: true}});
+
+
+    const rolePlayer = await getters.GetUser(role.roleMembers[0], game._id);
+
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].checking != ""){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "seer"},
+                {$set: {"specialFunctions.0.checking": ""}},
+                {upsert: true}
+            )
+        }
+    }
 }
 
 async function createRole([client, game]){

@@ -23,7 +23,9 @@ const users = mongoose.Schema({
     voted: reqBool,
     votedOn: String,
     votedOnMayor: String,
-    isMayor: bool
+    isMayor: bool,
+    protected: bool,
+    blocked: bool
 })
 
 module.exports = mongoose.model('user-data', users)

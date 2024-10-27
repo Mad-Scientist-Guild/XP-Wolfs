@@ -136,7 +136,7 @@ async function listenIn([client, game])
                     await gen.SendToChannel(role.channelID, "Results", sendMessage, client);
                 });
     }).catch(async (err) => {
-        console.log(err)
+        //console.log(err)
         await gen.SendToChannel(role.channelID, "Results", "It was completely quiet..", client);
     });
 

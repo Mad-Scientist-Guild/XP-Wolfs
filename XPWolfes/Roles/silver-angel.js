@@ -6,6 +6,7 @@ const users = require("../Schemas/users.js");
 const rolesSchema = require("../Schemas/roles-schema.js");
 const {eventBus} = require('../MISC/EventBus.js');
 const getters = require("../GeneralApi/Getter.js");
+const setters = require("../GeneralApi/Setters.js");
 
 
 module.exports = {
@@ -56,8 +57,9 @@ module.exports = {
         })  
     },
     async startup(){
-        eventBus.subscribe(onEvening, "evening");
-        eventBus.subscribe(onNight, "night");
+        eventBus.subscribe("morning", onMorning);
+        eventBus.subscribe("evening", onEvening);
+        eventBus.subscribe("night", onNight);
         eventBus.subscribe("rolesCreated", createRole);
 
     }
@@ -105,10 +107,39 @@ async function onEvening([client, game]){
 }
 
 async function onNight([client, game]){
+    const role = await getters.GetRole(game._id, "silver-angel");
+    const silverAngelPlayer = await getters.GetUser(role.roleMembers[0], game._id);
+
     await rolesSchema.updateOne({guildID: game._id, roleName: "silver-angel"}, 
         {$set: 
         {"specialFunctions.0.canUse": false}}, 
         {options: {upsert: true}});
+
+
+    if(silverAngelPlayer && silverAngelPlayer.blocked){
+        await gen.SendFeedback(game._id, "Blocked", "Silver angel ability was blocked", client);
+        return;
+    }
+
+    if(role.specialFunctions[0].protecting != "")
+    {
+        await setters.ProtectPlayer(game._id, role.specialFunctions[0].protecting );
+        return;
+    }
+}
+
+async function onMorning([client, game]){
+    const role = await getters.GetRole(game._id, "silver-angel");
+
+    if(role.specialFunctions.length > 0 && role.specialFunctions[0].protecting != "")
+    {
+        await rolesSchema.updateOne(
+        {guildID: game._id, roleName: "silver-angel"}, 
+        {set: {"specialFunctions.0.protecting": "", "specialFunctions.0.protectedLast": role.specialFunctions[0].protecting}}, 
+        {options: {upsert: true}});
+
+        return;
+    }
 }
 
 async function createRole([client, game]){

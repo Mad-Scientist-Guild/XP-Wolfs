@@ -166,6 +166,24 @@ async function ResolveNight([client, game]){
         return;
     }
 
+    await rolesSchema.updateOne(
+        {guildID: game._id, roleName: "witch"},
+        {$set: {"specialFunctions.0.canKill": false}},
+        {upsert: true}
+    )
+
+    const rolePlayer = await getters.GetUser(role.roleMembers[0], game._id);
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].killing != ""){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "witch"},
+                {$set: {"specialFunctions.0.killing": ""}},
+                {upsert: true}
+            )
+        }
+        return;
+    }
+
     if(role.specialFunctions[0].killing != "" && !role.specialFunctions[0].killed){
         await gen.SendToChannel(role.channelID, "Kill", "Your target is going to die this morning", client, Colors.NotQuiteBlack);
         await gen.SendFeedback(game._id, "Witch Kill", "The witch is killing " + userMention(role.specialFunctions[0].killing) + " tonight");

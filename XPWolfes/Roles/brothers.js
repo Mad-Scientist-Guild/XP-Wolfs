@@ -57,7 +57,7 @@ module.exports = {
                 }
             }
             finally{
-                mongoose.connection.close();
+                //mongoose.connection.close();
             }
         })  
     },
@@ -67,11 +67,11 @@ module.exports = {
 }
     
 async function handleVote(options, guild, interaction){
-    const brother = users.findOne({_id: interaction.user.id, guildID: guild.id});
-    const votedFor = users.findOne({_id: options.getUser("new-brother").id, guildID: guild.id});
-    const brothersData = rolesSchema.findOne({guildID: guild.id, roleName: "brothers"});
+    const brother = await users.findOne({_id: interaction.user.id, guildID: guild.id});
+    const votedFor = await users.findOne({_id: options.getUser("new-brother").id, guildID: guild.id});
+    const brothersData = await rolesSchema.findOne({guildID: guild.id, roleName: "brothers"});
 
-    if(!brotherData.specialFunctions[0].canVote){
+    if(!brothersData.specialFunctions[0].canVote){
         gen.reply(interaction, "you have already chosen to add someone")
         return;
     }
@@ -122,8 +122,6 @@ async function handleVote(options, guild, interaction){
             break;
     }
 
-    const brothersDataRefresh = rolesSchema.findOne({guildID: guild.id, roleName: "brothers"});
-
     //TODO: handle check if all votes are the same
     await checkVotes(options, guild, interaction);
 
@@ -131,7 +129,7 @@ async function handleVote(options, guild, interaction){
 
 async function checkVotes(options, guild, interaction){
     const {client} = interaction;
-    const brothersDataRefresh = rolesSchema.findOne({guildID: guild.id, roleName: "brothers"});
+    const brothersDataRefresh = await rolesSchema.findOne({guildID: guild.id, roleName: "brothers"});
 
     const b1 = await getters.GetUser(brothersDataRefresh.roleMembers[0], guild.id);
     const b2 = await getters.GetUser(brothersDataRefresh.roleMembers[1], guild.id);
@@ -143,18 +141,20 @@ async function checkVotes(options, guild, interaction){
         await votes.push(brothersDataRefresh.specialFunctions[0].b1Voted);
     }
     if(!b2.dead){
-        await votes.push(brothersDataRefresh.specialFunctions[0].b2Voted);
+         await votes.push(brothersDataRefresh.specialFunctions[0].b2Voted);
     }
     if(!b3.dead){
-        await votes.push(brothersDataRefresh.specialFunctions[0].b3Voted);
+    //     await votes.push(brothersDataRefresh.specialFunctions[0].b3Voted);
     }
 
     const AllEqual = arr => arr.every(v => v=== arr[0]);
     if(AllEqual(votes)){
         //Add brother
-        const channel = await pGuild.channels.cache.get(brothersDataRefresh.channelID).send( {embeds: [embed]} );
+        const channel = await guild.channels.cache.get(brothersDataRefresh.channelID);
         await gen.addToChannel(votes[0], channel);
-        await rolesSchema.updateOne({guildID: guild.id, roleName: "brothers"}, {set: {"specialFunctions.0.canVote": false}});
+        await gen.SendToChannel(brothersDataRefresh.channelID, "New Brother", userMention(votes[0]) + " was added to the channel!!", client);
+        await gen.SendFeedback(guild.id, "New Brother", userMention(votes[0]) + " was added to the brothers channel!!", client);
+        await rolesSchema.updateOne({guildID: guild.id, roleName: "brothers"}, {$set: {"specialFunctions.0.canVote": false}}, {options: {upsert: true}});
         return;
     }
     else{

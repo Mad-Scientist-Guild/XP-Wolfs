@@ -4,6 +4,7 @@ const { PermissionFlagsBits, Colors } = require("discord.js");
 const gen = require("../generalfunctions.js");
 const { eventBus } = require("../MISC/EventBus.js");
 const getters = require("../GeneralApi/Getter.js");
+const setters = require("../GeneralApi/Setters.js");
 
 //Schemas
 const gameData = require("../Schemas/game-data");
@@ -186,6 +187,24 @@ module.exports = {
                         .setRequired(true)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('protect')
+                .setDescription('Protects a player from dying')
+                .addUserOption(option => 
+                    option.setName("target")
+                        .setDescription("target of protect")
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('block')
+                .setDescription('blocks a players ability when it goes off')
+                .addUserOption(option => 
+                    option.setName("target")
+                        .setDescription("target of block")
+                        .setRequired(true)
+                )
+        )
         ,
     async execute(interaction){
 
@@ -264,6 +283,12 @@ module.exports = {
                         case 'force_join_all':
                             handleForceJoinAll(options, guild, interaction, client)
                             break;
+                        case 'protect':
+                            HandleProtect(options, guild, interaction, client)
+                            break;
+                        case 'block':
+                            HandleBlock(options, guild, interaction, client)
+                            break;
                     }
             } 
             finally{
@@ -329,7 +354,9 @@ async function handleForceJoinAll(options, guild, interaction, client){
             _id: user.id,
             guildID: guild.id,
             dead: false,
-            voted: false
+            voted: false,
+            protected: false,
+            blocked: false
         })
         await gen.SendFeedback(guild.id, "PLAYER JOINED!", `**${userMention(user.id)}** Joined the game`, client)
     })
@@ -482,6 +509,36 @@ async function resetBotCommands(guild, interaction, client){
     guild.commands.set([]);
 
     gen.reply(interaction, "Reset commands. Might take ~1 hour to go into effect");
+}
+
+async function HandleProtect(options, guild, interaction, client){
+    const user = await getters.GetUser(options.getUser("target").id, guild.id)
+    if(user.protected)
+    {
+        await setters.DontProtectPlayer(guild.id, options.getUser("target").id);
+        await gen.SendFeedback(guild.id, "Protecting", "Admin has decided to cancel protection on " + userMention(options.getUser("target").id), client)
+        gen.noReply(interaction);
+    }
+    else{
+        await setters.ProtectPlayer(guild.id, options.getUser("target").id);
+        await gen.SendFeedback(guild.id, "Protecting", "Admin has decided to protect " + userMention(options.getUser("target").id), client)
+        gen.noReply(interaction);
+    }
+}
+
+async function HandleBlock(options, guild, interaction, client){
+    const user = await getters.GetUser(options.getUser("target").id, guild.id)
+    if(user.protected)
+    {
+        await setters.DontBlockPlayer(guild.id, options.getUser("target").id);
+        await gen.SendFeedback(guild.id, "Protecting", "Admin has decided to cancel blocking on " + userMention(options.getUser("target").id), client)
+        gen.noReply(interaction);
+    }
+    else{
+        await setters.BlockPlayer(guild.id, options.getUser("target").id);
+        await gen.SendFeedback(guild.id, "Protecting", "Admin has decided to blocking " + userMention(options.getUser("target").id), client)
+        gen.noReply(interaction);
+    }
 }
 
 ///

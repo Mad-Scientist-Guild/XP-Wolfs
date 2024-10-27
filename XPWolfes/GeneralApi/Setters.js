@@ -20,9 +20,36 @@ async function SetRole(guildId, RoleName, data){
     else return undefined;
 }
 
+async function ProtectPlayer(GuildID, UserID)
+{
+    await usersData.updateOne({_id: UserID, guildID: GuildID}, 
+        {protected: true}, {options: {upsert: true}});
+}
+
+async function DontProtectPlayer(GuildID, UserID)
+{
+    await usersData.updateOne({_id: UserID, guildID: GuildID}, 
+        {protected: false}, {options: {upsert: true}});
+}
+
+async function BlockPlayer(GuildID, UserID)
+{
+    await usersData.updateOne({_id: UserID, guildID: GuildID}, 
+        {blocked: true}, {options: {upsert: true}});
+}
+
+async function DontBlockPlayer(GuildID, UserID)
+{
+    await usersData.updateOne({_id: UserID, guildID: GuildID}, 
+        {blocked: false}, {options: {upsert: true}});
+}
 
 
 
 module.exports = {
     SetRole,
+    ProtectPlayer,
+    DontProtectPlayer,
+    BlockPlayer,
+    DontBlockPlayer
 }

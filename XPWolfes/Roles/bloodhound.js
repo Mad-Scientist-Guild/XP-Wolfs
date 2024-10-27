@@ -97,16 +97,29 @@ async function ResolveEvening([client, game]){
 
 async function ResolveNight([client, game]){
     await rolesSchema.updateOne(
-        {guildID: game._id, roleName: "ancient-wolf"}, 
+        {guildID: game._id, roleName: "bloodhound"}, 
         {$set: {"specialFunctions.0.canUse": false}},
         {options: {upsert: true}}
     )
+
+    const role = await getters.GetRole(game._id, "bloodhound")
+    const rolePlayer = await getters.GetUser(role.roleMembers[0], game._id);
+
+    if(rolePlayer && rolePlayer.blocked){
+        if(role.specialFunctions[0].bloodhoundChecking != ""){
+            await rolesSchema.updateOne(
+                {guildID: game._id, roleName: "bloodhound"},
+                {$set: {"specialFunctions.0.bloodhoundChecking": ""}},
+                {upsert: true}
+            )
+        }
+    }
 }
 
 async function bloodhoundInformation([client, game])
 {
     const wwData = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
-    const bloodhound = getters.GetRole(guild.id, "bloodhound")
+    const bloodhound = await getters.GetRole(game._id, "bloodhound")
 
 
     if(!bloodhound || bloodhound.specialFunctions.length == 0){

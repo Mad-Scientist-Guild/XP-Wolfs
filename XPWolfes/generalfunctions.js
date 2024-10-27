@@ -10,6 +10,7 @@ const { Colors, GuildApplicationCommandManager, AttachmentBuilder } = require("d
 const mayorSchema = require("./Schemas/mayor-schema");
 const { eventBus } = require("./MISC/EventBus.js");
 const getters = require("./GeneralApi/Getter.js");
+const setters = require("./GeneralApi/Setters.js");
 
 async function reply(interaction, msg, private = true){
     await interaction.reply({
@@ -126,7 +127,7 @@ async function addToNightKilled(UserID, GuildID, client, Cause){
 
     await gameData.updateOne({_id: GuildID}, {$push: {nightKilled: {id: UserID, cause: Cause}}}, {options: {upsert: true}});
     
-    SendFeedback(GuildID, "KILLING", getName(null, UserID, client) + "Is going to die in the morning", client)
+    SendFeedback(GuildID, "KILLING", userMention(UserID) + "Is going to die in the morning", client)
 }
 
 async function killNightKilled(client, game){
@@ -142,26 +143,31 @@ async function killNightKilled(client, game){
 
     let msg = "Killed people: \n"
 
-    updatedGame.nightKilled.forEach(async killedPerson => {
+    //Kill all night killed
+    await updatedGame.nightKilled.forEach(async killedPerson => {
+        const KilledPlayer = await getters.GetUser(killedPerson.id, game._id);
+        if(KilledPlayer && KilledPlayer.protected){
+             await SendFeedback(game._id, "Protected", userMention(KilledPlayer._id) + " was protected and didn't die", client, Colors.White);
+             return;
+        }
+             
         msg = msg + `${userMention(killedPerson.id)} - killed by ${killedPerson.cause} \n`
         await Kill(killedPerson.id, game._id, client);
     })
 
-
-    const silverAngel = await rolesSchema.findOne({guildID: game._id, roleName: "silver-angel"})
-    if(silverAngel.specialFunctions.length > 0 && silverAngel.specialFunctions[0].protecting != "")
-    {
-        await rolesSchema.updateOne(
-        {guildID: game._id, roleName: "silver-angel"}, 
-        {set: {"specialFunctions.0.protecting": "", "specialFunctions.0.protectedLast": silverAngel.specialFunctions[0].protecting}}, 
-        {options: {upsert: true}});
-
-        await SendFeedback(game._id, "Protected", userMention(UserID) + " was protected and didnt die", client, Colors.White);
-        return;
+    //Remove protection from players
+    const protectedPlayers = await users.find({guildID: game._id, protected: true});
+    if(protectedPlayers.length > 0){
+        await protectedPlayers.forEach(async player => {
+            await setters.DontProtectPlayer(game._id, player._id);
+        });
     }
 
+    //Send Feedback
     await gameData.updateOne({_id: game._id}, {$set: {nightKilled: []}}, {options: {upsert: true}})
     await SendFeedback(game._id, "NEW DAY, NEW DEATH", msg, client);
+
+    
 }
 
 //Kill player right then and there
@@ -171,31 +177,16 @@ async function Kill(UserID, GuildID, client, guild = null, Cause = ""){
         if(guild == null) guild = getGuild(client, GuildID)
             
         const game = await getters.GetGame(GuildID);
+        const KilledPlayer = await getters.GetUser(UserID, GuildID);
 
-        //Silver angel check;
-        const silverAngel = await rolesSchema.findOne({guildID: GuildID, roleName: "silver-angel"})
-        if(silverAngel.specialFunctions.length > 0 && UserID == silverAngel.specialFunctions[0].protecting)
-        {
-            await rolesSchema.updateOne(
-            {guildID: GuildID, roleName: "silver-angel"}, 
-            {$set: {"specialFunctions.0.protecting": "", "specialFunctions.0.protectedLast": silverAngel.specialFunctions[0].protecting}}, 
-            {options: {upsert: true}});
-
-            await SendFeedback(GuildID, "Protected", userMention(UserID) + " was protected and didn't die", client, Colors.White);
+        if(!KilledPlayer){
             return;
         }
 
-        const KilledPlayer = await users.findOne({_id: UserID, guildID: GuildID})
-
-        const KilledPlayerFamily = await getters.GetUsersFamily(GuildID, UserID);
-
-        if(KilledPlayerFamily.familyProtected){
-            await SendFeedback(GuildID, "Protected", userMention(UserID) + " was protected and didn't die", client, Colors.White);
-            return;
-        }
-            
         await gameData.updateOne({_id: GuildID}, {$push: {killedLastNight: KilledPlayer._id}}, {options: {upsert: true}});
 
+
+        //Check if killed player was mayor
         if(KilledPlayer.isMayor){
             await SendFeedback(GuildID, "Mayor dead!", "The mayor died, The succesor is taking over", client)
             let mayordata = await mayorSchema.findOne({_id: GuildID})
@@ -219,7 +210,6 @@ async function Kill(UserID, GuildID, client, guild = null, Cause = ""){
     await gameData.updateOne({_id: GuildID}, {$pull: {alive: UserID}}, {options: {upsert: true}})
     await SendFeedback(GuildID, "PLAYER DIED!", getName(null, UserID, client) + " Died", client, Colors.Red)
     const game = await gameData.findOne({_id: GuildID});
-
 
     //Remove from all channels exept dead
     const channels = await guild.channels.cache
