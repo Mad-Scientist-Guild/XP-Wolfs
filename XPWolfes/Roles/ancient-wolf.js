@@ -8,6 +8,7 @@ const factionSchema = require("../Schemas/faction-Schema.js");
 const getters = require("../GeneralApi/Getter.js");
 const gameData = require("../Schemas/game-data");
 
+const RoleName = "ancient-wolf"
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -25,7 +26,7 @@ module.exports = {
         
         await mongo().then(async mongoose => {
             try{
-                const role = await getters.GetRole(guild.id, "ancient-wolf");
+                const role = await getters.GetRole(guild.id, RoleName);
                 const isRole = (role.roleMembers[0] == interaction.user.id);
 
                 if(isRole || admin){
@@ -63,7 +64,7 @@ module.exports = {
 async function handleAncient(interaction, guild){
     const {client} = interaction
     const wwData = await getters.GetRole(guild.id, "werewolf")
-    const ancient = await getters.GetRole(guild.id, "ancient-wolf")
+    const ancient = await getters.GetRole(guild.id, RoleName)
 
     if(!ancient.specialFunctions[0].canUse){
         gen.reply(interaction, "Can't use this ability at this time");
@@ -77,7 +78,7 @@ async function handleAncient(interaction, guild){
 
     if(ancient.specialFunctions[0].turning){
         await rolesSchema.updateOne(
-            {guildID: guild.id, roleName: "ancient-wolf"}, 
+            {guildID: guild.id, roleName: RoleName}, 
             {$set: {"specialFunctions.0.turning": false}},
             {options: {upsert: true}}
         )
@@ -86,7 +87,7 @@ async function handleAncient(interaction, guild){
     }
     else{
         await rolesSchema.updateOne(
-            {guildID: guild.id, roleName: "ancient-wolf"}, 
+            {guildID: guild.id, roleName: RoleName}, 
             {$set: {"specialFunctions.0.turning": true}},
             {options: {upsert: true}}
         )
@@ -101,7 +102,7 @@ async function handleAncient(interaction, guild){
 //Resolve Timebased Functions
 async function ancientWolfTurning([client, game]){
     const wwData = await rolesSchema.findOne({guildID: game._id, roleName: "werewolf"})
-    const ancient = await getters.GetRole(game._id, "ancient-wolf")
+    const ancient = await getters.GetRole(game._id, RoleName)
 
     if(!ancient || ancient.specialFunctions.length == 0){
         return;
@@ -120,7 +121,7 @@ async function ancientWolfTurning([client, game]){
     if(wwData.specialFunctions[0].turning && !wwData.specialFunctions[0].turned)
     {
         await rolesSchema.updateOne(
-            {guildID: wwData._id, roleName: "ancient-wolf"},
+            {guildID: wwData._id, roleName: RoleName},
             {$set: {"specialFunctions.0.turned": true}},
             {upsert: true}
         )
@@ -130,26 +131,26 @@ async function ancientWolfTurning([client, game]){
 }
 async function ResolveEvening([client, game]){
     await rolesSchema.updateOne(
-        {guildID: game._id, roleName: "ancient-wolf"}, 
+        {guildID: game._id, roleName: RoleName}, 
         {$set: {"specialFunctions.0.canUse": true}},
         {options: {upsert: true}}
     )
 }
 async function ResolveNight([client, game]){
     await rolesSchema.updateOne(
-        {guildID: game._id, roleName: "ancient-wolf"}, 
+        {guildID: game._id, roleName: RoleName}, 
         {$set: {"specialFunctions.0.canUse": false}},
         {options: {upsert: true}}
     )
 
-    const ancient = await getters.GetRole(game._id, "ancient-wolf")
+    const ancient = await getters.GetRole(game._id, RoleName)
     const ancientPlayer = await getters.GetUser(ancient.roleMembers[0], game._id);
 
     if(ancientPlayer && ancientPlayer.blocked){
         if(ancient.specialFunctions[0].turning){
 
             await rolesSchema.updateOne(
-                {guildID: game._id, roleName: "ancient-wolf"},
+                {guildID: game._id, roleName: RoleName},
                 {$set: {"specialFunctions.0.turning": false}},
                 {upsert: true}
             )
@@ -159,7 +160,7 @@ async function ResolveNight([client, game]){
 
 //Create role
 async function createRole([client, game]){
-    await rolesSchema.updateOne({guildID: game._id, roleName: "ancient-wolf"}, 
+    await rolesSchema.updateOne({guildID: game._id, roleName: RoleName}, 
         {$set: {specialFunctions: [{
             canUse: false,
             turned: false,

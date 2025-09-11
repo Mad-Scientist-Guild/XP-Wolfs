@@ -7,6 +7,7 @@ const {eventBus} = require('../MISC/EventBus.js');
 const getters = require("../GeneralApi/Getter.js");
 const gameData = require("../Schemas/game-data.js");
 
+const RoleName = "peeking-girl";
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -29,7 +30,7 @@ module.exports = {
         
         await mongo().then(async mongoose => {
             try{
-                const role = await getters.GetRole(guild.id, "peeking-girl");
+                const role = await getters.GetRole(guild.id, RoleName);
                 const isRole = (role.roleMembers[0] == interaction.user.id);
 
                 if(isRole || admin){
@@ -64,7 +65,7 @@ module.exports = {
 async function handleListeningTime(interaction, guild, client, options)
 {
     const game = await gameData.findOne({_id: guild.id});
-    const role = await rolesSchema.findOne({guildID: guild.id, roleName: "peeking-girl"});
+    const role = await rolesSchema.findOne({guildID: guild.id, roleName: RoleName});
 
     if(!role){
         gen.reply(interaction, "role not existent");
@@ -77,7 +78,7 @@ async function handleListeningTime(interaction, guild, client, options)
     
     const startTime = options.getString("start_time")
     
-    await rolesSchema.updateOne({guildID: guild.id, roleName: "peeking-girl"}, 
+    await rolesSchema.updateOne({guildID: guild.id, roleName: RoleName}, 
         {$set: {specialFunctions: [{
             UsedAbility: true,
             StartTime: startTime
@@ -91,7 +92,7 @@ async function handleListeningTime(interaction, guild, client, options)
 
 async function listenIn([client, game])
 {
-    const role = await rolesSchema.findOne({guildID: game._id, roleName: "peeking-girl"});
+    const role = await rolesSchema.findOne({guildID: game._id, roleName: RoleName});
     const WWRole = await getters.GetRole(game._id, "werewolf");
     const CultistRole = await getters.GetRole(game._id, "cultist");
     if(!WWRole) return;
@@ -100,19 +101,19 @@ async function listenIn([client, game])
 
     await gen.SendToChannel(role.channelID, "Started Listening", "You have started listening in on the werewolfs", client);
 
+    const m_filter = (m) => m.author.id !== 1165040345785057411;
     let messages = [];
-    WWChannel.awaitMessages({max: 1, time: (60000 * 1), errors: ["time"]})
+    WWChannel.awaitMessages({filter: m_filter, max: 1, time: (60000 * 1), errors: ["time"]})
         .then(async (collection) => {
             messages.push(collection.first());
-            await WWChannel.awaitMessages({time: (60000 * 1) , errors: ["time"]})
+            await WWChannel.awaitMessages({filter: m_filter, time: (60000 * 1)})
                 .then(async (collection2) => {
-                    collection2.forEach(message => {
+                    await collection2.forEach(message => {
                         messages.push(message);
                     });
                     let sendMessage = "";
 
                     await messages.forEach(async message => {
-
                         if(WWRole.roleMembers.includes(message.author.id)){
                             sendMessage += "**wolf " + (WWRole.roleMembers.indexOf(message.author.id) + 1) + "**: " + message.content + "\n";
                         }
@@ -125,7 +126,7 @@ async function listenIn([client, game])
                 })
                 .catch(async (err) => {
                     let sendMessage = "";
-
+                    console.log("caught");
                     if(WWRole.roleMembers.includes(messages[0].author.id)){
                         sendMessage += "**wolf " + (WWRole.roleMembers.indexOf(messages[0].author.id) + 1) + "**: " + messages[0].content + "\n";
                     }
@@ -145,7 +146,7 @@ async function listenIn([client, game])
 }
 
 async function handleMorning([client, game]){
-    const role = await rolesSchema.findOne({guildID: game._id, roleName: "peeking-girl"});
+    const role = await rolesSchema.findOne({guildID: game._id, roleName: RoleName});
 
     if(!role){
         return;
@@ -154,7 +155,7 @@ async function handleMorning([client, game]){
         return;
     }
 
-    await rolesSchema.updateOne({guildID: game._id, roleName: "peeking-girl"}, 
+    await rolesSchema.updateOne({guildID: game._id, roleName: RoleName}, 
         {$set: {specialFunctions: [{
             UsedAbility: false,
             StartTime: ""
@@ -163,7 +164,7 @@ async function handleMorning([client, game]){
 }
 
 async function createRole([client, game]){
-    await rolesSchema.updateOne({guildID: game._id, roleName: "peeking-girl"}, 
+    await rolesSchema.updateOne({guildID: game._id, roleName: RoleName}, 
         {$set: {specialFunctions: [{
             UsedAbility: false,
             StartTime: ""

@@ -20,7 +20,6 @@ module.exports = {
                 const eveningGames = await gameData.find({times: {$elemMatch:{evening: timeString}}, started: true, finished: false})
                 const nightGames = await gameData.find({times: {$elemMatch:{night: timeString}}, started: true, finished: false})
 
-                //const peek = await rolesSchema.findOne({specialFunctions: {$elemMatch:{StartTime: timeString}}, roleName: "peeking-girl"});
                 const peekingGirl = await rolesSchema.find({specialFunctions: {$elemMatch:{StartTime: timeString}}, roleName: "peeking-girl"});
 
                 if(morningGames.length > 0){ 

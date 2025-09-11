@@ -88,7 +88,7 @@ async function handleBloodHound(options, guild, interaction){
 //Resolve Timebased Functions
 async function ResolveEvening([client, game]){
     await rolesSchema.updateOne(
-        {guildID: game._id, roleName: "ancient-wolf"}, 
+        {guildID: game._id, roleName: RoleName}, 
         {$set: {"specialFunctions.0.canUse": true}},
         {options: {upsert: true}}
     )
@@ -146,7 +146,7 @@ async function bloodhoundInformation([client, game])
 }
 
 async function createRole([client, game]){
-    await rolesSchema.updateOne({guildID: game._id, roleName: "ancient-wolf"}, 
+    await rolesSchema.updateOne({guildID: game._id, roleName: RoleName}, 
         {$set: {specialFunctions: [{
             canUse: false,
             bloodhoundChecking: "",
