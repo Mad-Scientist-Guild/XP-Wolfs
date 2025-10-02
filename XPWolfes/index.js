@@ -1,24 +1,29 @@
-const {Client, GatewayIntentBits, Application, ReactionCollector, Message, userMention, Collection, roleMention} = require('discord.js');
+const {Client, GatewayIntentBits, Application, ReactionCollector, Message, userMention, Collection, roleMention, Intents} = require('discord.js');
 const {REST} = require("@discordjs/rest");
 const {Routes} = require("discord-api-types/v9");
 const fs = require("fs");
 const { randomInt } = require('crypto');
 const mongo = require("./mongo");
-const TimedMessage = require("./MISC/TimedMessages")
+const TimedMessage = require("./TimedEvents/TimedMessages")
 const gen = require("./generalfunctions")
 
 
 require('dotenv/config');
 
-    const client = new Client({ intents: 32767 });
+    const client = new Client({ intents: [32767, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+
+    
 
     ///Command handler
     const commandFiles = fs.readdirSync("./commands").filter(file => file.endsWith(".js"));
-    const menu_interactions = fs.readdirSync("./DropdownInteraction").filter(file => file.endsWith(".js"));
+    const roleCommandFiles = fs.readdirSync("./roles").filter(file => file.endsWith(".js"));
     const commands = [];
     client.commands = new Collection();
     client.menu_ints = new Collection();
     
+
+
+
     //Settings
     channel = undefined;
     role = undefined;
@@ -31,9 +36,10 @@ require('dotenv/config');
         client.commands.set(command.data.name, command);
     }
 
-    for(const file of menu_interactions){
-        const menu_int = require(`./DropdownInteraction/${file}`);
-        client.menu_ints.set(menu_int.data.customId, menu_int);
+    for(const file of roleCommandFiles){
+        const command = require(`./roles/${file}`);
+        commands.push(command.data.toJSON());
+        client.commands.set(command.data.name, command);
     }
 
     client.on('ready', async () => {
@@ -72,6 +78,21 @@ require('dotenv/config');
             catch(err){
                 if(err) {console.error(err);}
              }
+        })();
+        
+        (async () =>{
+            try{
+                await client.commands.forEach(async command => {
+                    if(typeof command.startup !== "undefined"){
+                        await command.startup()
+                    }
+                });
+            }
+            catch(err){
+                if(err) {
+                    console.error(err);
+                }
+            }
         })();
     })
 

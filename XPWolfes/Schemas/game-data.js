@@ -19,24 +19,27 @@ const bool = {
     required: false
 }
 
+const reqArray = {
+    type: Array,
+    default: [],
+    required: true
+}
+
 const game = mongoose.Schema({
     _id: reqString,
     started: reqBool,
-    finished: bool,
-    anouncementChannel: string,
-    voteChannel: string,
-    modChannel: string,
-    deadChannel: string,
-    lynchTimeStart: string,
-    lynchTimeEnd: string,
-    canVote: bool,
+    finished: reqBool,
+    channels: reqArray,
+    times: reqArray,
+    canVote: reqBool,
+    votes: [],
     alive: [],
     dead: [],
     day: Number,
-    morning: string,
-    night: string,
     nightKilled: [],
-    newspaper: string
+    killedLastNight: [],
+    newspaper: string,
+    leftHouse: []
 })
 
 module.exports = mongoose.model('game-data', game)

@@ -3,6 +3,9 @@ const rolesSchema = require("../Schemas/roles-schema")
 const mongo = require("../mongo");
 const { ChannelFlagsBitField, PermissionFlagsBits } = require("discord.js");
 const gen = require("../generalfunctions");
+const {eventBus} = require("../MISC/EventBus.js");
+const factionSchema = require("../Schemas/faction-Schema.js");
+const getters = require("../GeneralApi/Getter.js");
 
 module.exports = {
     data : new SlashCommandBuilder()
@@ -50,6 +53,15 @@ module.exports = {
                     )
         )//create
         .addSubcommand(subcommand => 
+            subcommand.setName('create_all')
+                .setDescription("Please fill in the details for the role")
+                .addStringOption(option => 
+                    option.setName("category_id")
+                        .setDescription("please give the category of whitch you want the channels to be used")
+                        .setRequired(true)
+                    )
+        )//create all
+        .addSubcommand(subcommand => 
             subcommand.setName('remove_user')
                 .setDescription("remove a role")
                 .addUserOption(option => 
@@ -90,13 +102,16 @@ module.exports = {
                     case "create":
                         await handleCreate(options, guild, interaction)
                         return;
+                    case "create_all":
+                        await handleCreateAll(options, guild, interaction)
+                        return;
                     case "remove_user":
                         await handleRemoveUser(options, guild, interaction);
                         return;
                 }  
             } 
             finally{
-                mongoose.connection.close();
+                //mongoose.connection.close();
             }
         })
     }
@@ -106,17 +121,37 @@ async function handleAddUser(options, guild, interaction){
     const role = await rolesSchema.findOne({guildID: guild.id, roleName: options.getString('role_name')})
 
     if(!role){
-        gen.reply("The role you where trying to add the user to was not found")
+        gen.reply(interaction, "The role you where trying to add the user to was not found")
+        return;
     }
     if(role.roleMembers.includes(options.getUser('user').id)){
-        gen.reply("The user you where trying to add from the role is already part of the role")
+        gen.reply(interaction, "The user you where trying to add from the role is already part of the role")
+        return;
     }
 
-    await rolesSchema.updateOne({ guildID: guild.id, roleName: options.getString("role_name") }, { $push: { "roleMembers": options.getUser('user').id } }, { options: { upsert: true } });
+    await rolesSchema.updateOne({ guildID: guild.id, roleName: options.getString("role_name") }, 
+    { $push: { "roleMembers": options.getUser('user').id } }, 
+    { options: { upsert: true } });
+    
+    if(options.getString("role_name") == "werewolf"){
+        await factionSchema.updateOne({ guildID: guild.id, factionName: "werewolfs" }, 
+            { $push: { "factionMembers": options.getUser('user').id } }, 
+            { options: { upsert: true } })
+    }
+    else if(options.getString("role_name") == "lich" || options.getString("role_name") == "vampire-lord"){
+        await factionSchema.updateOne({ guildID: guild.id, factionName: "undead" }, 
+            { $push: { "factionMembers": options.getUser('user').id } }, 
+            { options: { upsert: true } })
+    }
+    else{
+        await factionSchema.updateOne({ guildID: guild.id, factionName: "vilagers" }, 
+            { $push: { "factionMembers": options.getUser('user').id } }, 
+            { options: { upsert: true } })
+    }
+
     gen.reply(interaction, `user ${options.getUser('user').username} has been added to the role ${options.getString("role_name")}`);
 } 
     
-
 async function handleGetAll(guild, interaction){
     const allEntries = await rolesSchema.find({guildID: guild.id})
     allRoleNames = "**Roles:** \n";
@@ -147,8 +182,7 @@ async function handleGet(options, guild, interaction){
         ephemeral: true
     })
 } 
-        
-    
+            
 async function handleCreate(options, guild, interaction){
     const role = await rolesSchema.findOne({guildID: guild.id, roleName: options.getString("role_name")})
 
@@ -166,6 +200,31 @@ async function handleCreate(options, guild, interaction){
         })
         gen.reply(interaction, "Role has been created")
     }
+} 
+
+async function handleCreateAll(options, guild, interaction){
+    const {client} = await interaction;
+    const game = await getters.GetGame(guild.id)
+    const catID = options.getString("category_id")
+
+    const category = await client.channels.cache.get(catID);
+    const channels = await Array.from(category.children.cache.values());
+    
+    for( let channel of channels )
+    {
+        await rolesSchema.create({
+            guildID: guild.id,
+            roleName: channel.name.toLowerCase(),
+            channelID: channel.id,
+            roleMembers: [],
+            specialFunctions: []
+        })
+    }
+
+    eventBus.deploy("rolesCreated", [client, game]);
+
+    gen.reply(interaction, "Role has been created")
+    
 } 
 
 async function handleRemoveUser(options, guild, interaction){
