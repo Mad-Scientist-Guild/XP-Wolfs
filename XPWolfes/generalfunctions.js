@@ -99,6 +99,8 @@ function removeFromChannelWriting(userID, channel){
 //Removes user from writing in a channel
 function addToChannel(userID, channel)
 {
+    console.log(userID + " - " + channel)
+
     channel.permissionOverwrites.edit(userID, 
     {
         SendMessages: true,

@@ -122,9 +122,11 @@ async function handleAddUser(options, guild, interaction){
 
     if(!role){
         gen.reply(interaction, "The role you where trying to add the user to was not found")
+        return;
     }
     if(role.roleMembers.includes(options.getUser('user').id)){
         gen.reply(interaction, "The user you where trying to add from the role is already part of the role")
+        return;
     }
 
     await rolesSchema.updateOne({ guildID: guild.id, roleName: options.getString("role_name") }, 

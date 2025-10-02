@@ -8,6 +8,7 @@ const factionSchema = require("../Schemas/faction-Schema.js");
 const getters = require("../GeneralApi/Getter.js");
 const gameData = require("../Schemas/game-data.js");
 
+const RoleName = "bloodhound"
 
 module.exports = {
     data : new SlashCommandBuilder()

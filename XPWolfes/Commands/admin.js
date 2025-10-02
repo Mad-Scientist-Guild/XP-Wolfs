@@ -697,7 +697,7 @@ async function handleOpenGame(guild, interaction){
 
     if(game && !game.started){
         await gen.SendAnouncement(interaction, "NEW GAME HAS STARTED", "It's time once again. the game is going to start. You can join using the **/game join** command")
-        await gen.noReply()
+        await gen.noReply(interaction)
     }
 }//Done
 
